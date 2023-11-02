@@ -48,6 +48,7 @@ class MapboxMapController: NSObject, FlutterPlatformView {
     private var channel: FlutterMethodChannel
     private var annotationController: AnnotationController?
     private var gesturesController: GesturesController?
+    private var httpFactoryController: HttpFactoryController?
     private var proxyBinaryMessenger: ProxyBinaryMessenger
 
     func view() -> UIView {
@@ -113,7 +114,13 @@ class MapboxMapController: NSObject, FlutterPlatformView {
 
         let scaleBarController = ScaleBarController(withMapView: mapView)
         FLT_SETTINGSScaleBarSettingsInterfaceSetup(proxyBinaryMessenger, scaleBarController)
-
+        
+        let httpFactoryController = HttpFactoryController(withPluginVersion: pluginVersion)
+        HttpFactorySettingsInterfaceSetup.setUp(
+            binaryMessenger: proxyBinaryMessenger,
+            api: httpFactoryController
+        )
+        
         annotationController = AnnotationController(withMapView: mapView)
         annotationController!.setup(messenger: proxyBinaryMessenger)
 
@@ -151,6 +158,9 @@ class MapboxMapController: NSObject, FlutterPlatformView {
             result(nil)
         case "gesture#remove_listeners":
             gesturesController!.removeListeners()
+            result(nil)
+        case "map#set_interceptor":
+            httpFactoryController!.handleSetInterceptor(methodCall: methodCall, result: result)
             result(nil)
         default:
             result(FlutterMethodNotImplemented)

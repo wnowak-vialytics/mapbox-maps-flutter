@@ -177,6 +177,10 @@ class MapboxMap extends ChangeNotifier {
   late CompassSettingsInterface compass =
       CompassSettingsInterface(binaryMessenger: _proxyBinaryMessenger);
 
+  /// The interface to access the HttpFactory settings.
+  late HttpFactorySettingsInterface httpFactory =
+      HttpFactorySettingsInterface(binaryMessenger: _proxyBinaryMessenger);
+
   /// The interface to access the compass settings.
   late ScaleBarSettingsInterface scaleBar =
       ScaleBarSettingsInterface(binaryMessenger: _proxyBinaryMessenger);
@@ -619,6 +623,10 @@ class MapboxMap extends ChangeNotifier {
   void setOnMapMoveListener(OnMapScrollListener? onMapScrollListener) {
     this.onMapScrollListener = onMapScrollListener;
     _setupGestures();
+  }
+
+  void setInterceptor(List<HttpInterceptorOptions?> options) {
+    httpFactory.setInterceptor(options);
   }
 }
 
