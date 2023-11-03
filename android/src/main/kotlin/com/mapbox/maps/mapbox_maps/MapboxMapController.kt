@@ -7,6 +7,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.mapbox.common.*
 import com.mapbox.maps.*
 import com.mapbox.maps.mapbox_maps.annotation.AnnotationController
+import com.mapbox.maps.pigeons.FLTHttpFactorySettings
 import com.mapbox.maps.pigeons.FLTMapInterfaces
 import com.mapbox.maps.pigeons.FLTSettings
 import io.flutter.plugin.common.BinaryMessenger
@@ -41,7 +42,7 @@ class MapboxMapController(
   private val attributionController = AttributionController(mapView)
   private val scaleBarController = ScaleBarController(mapView)
   private val compassController = CompassController(mapView)
-
+  private val httpFactoryController = HttpFactoryController(pluginVersion)
   private val proxyBinaryMessenger = ProxyBinaryMessenger(messenger, "/map_$channelSuffix")
 
   init {
@@ -59,6 +60,10 @@ class MapboxMapController(
     FLTSettings.AttributionSettingsInterface.setup(proxyBinaryMessenger, attributionController)
     FLTSettings.ScaleBarSettingsInterface.setup(proxyBinaryMessenger, scaleBarController)
     FLTSettings.CompassSettingsInterface.setup(proxyBinaryMessenger, compassController)
+    FLTHttpFactorySettings.HttpFactorySettingsInterface.setup(
+      proxyBinaryMessenger,
+      httpFactoryController
+    )
     methodChannel = MethodChannel(proxyBinaryMessenger, "plugins.flutter.io")
     methodChannel.setMethodCallHandler(this)
     mapboxMap.subscribe(
@@ -88,6 +93,7 @@ class MapboxMapController(
     FLTSettings.LogoSettingsInterface.setup(proxyBinaryMessenger, null)
     FLTSettings.GesturesSettingsInterface.setup(proxyBinaryMessenger, null)
     FLTSettings.CompassSettingsInterface.setup(proxyBinaryMessenger, null)
+    FLTHttpFactorySettings.HttpFactorySettingsInterface.setup(proxyBinaryMessenger, null)
     FLTSettings.ScaleBarSettingsInterface.setup(proxyBinaryMessenger, null)
     FLTSettings.AttributionSettingsInterface.setup(proxyBinaryMessenger, null)
   }
@@ -126,6 +132,10 @@ class MapboxMapController(
       }
       "gesture#remove_listeners" -> {
         gestureController.removeListeners()
+        result.success(null)
+      }
+      "map#set_interceptor" -> {
+        httpFactoryController.handleSetInterceptor(call, result)
         result.success(null)
       }
       else -> {
