@@ -16,7 +16,6 @@ class HttpFactoryController(private val pluginVersion: String) :
     HttpServiceFactory.getInstance().setInterceptor(
       object : HttpServiceInterceptorInterface {
         override fun onRequest(request: HttpRequest): HttpRequest {
-          print("request.url: ${request.url}")
           request.headers[HttpHeaders.USER_AGENT] =
             "${request.headers[HttpHeaders.USER_AGENT]} Flutter Plugin/$pluginVersion"
           for (option: FLTHttpFactorySettings.HttpInterceptorOptions? in options) {

@@ -38,13 +38,11 @@ class HttpFactoryController: NSObject, HttpFactorySettingsInterface {
             }
             
             for option in options {
-                if option == nil {
-                    continue
-                }
-                let urlRegex = try! NSRegularExpression(pattern: option!.urlRegex)
+                guard let option = option else { continue }
+                let urlRegex = try! NSRegularExpression(pattern: option.urlRegex)
                 let range = NSRange(location: 0, length: request.url.utf16.count)
                 if urlRegex.firstMatch(in: request.url, options: [], range: range) != nil {
-                    let headers = option?.headers ?? []
+                    let headers = option.headers ?? []
                     for header in headers {
                         request.headers[header!.key] = header!.value
                     }
