@@ -8,6 +8,12 @@ import com.mapbox.maps.pigeons.FLTCircleAnnotationMessager
 import com.mapbox.maps.plugin.annotation.generated.CircleAnnotation
 import com.mapbox.maps.plugin.annotation.generated.CircleAnnotationManager
 import com.mapbox.maps.plugin.annotation.generated.CircleAnnotationOptions
+import toCirclePitchAlignment
+import toCirclePitchScale
+import toCircleTranslateAnchor
+import toFLTCirclePitchAlignment
+import toFLTCirclePitchScale
+import toFLTCircleTranslateAnchor
 
 class CircleAnnotationController(private val delegate: ControllerDelegate) :
   FLTCircleAnnotationMessager._CircleAnnotationMessager {
@@ -22,11 +28,11 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
     try {
       val manager = delegate.getManager(managerId) as CircleAnnotationManager
       val annotation = manager.create(annotationOption.toCircleAnnotationOptions())
-      annotationMap[annotation.id.toString()] = annotation
+      annotationMap[annotation.id] = annotation
       if (managerCreateAnnotationMap[managerId].isNullOrEmpty()) {
-        managerCreateAnnotationMap[managerId] = mutableListOf(annotation.id.toString())
+        managerCreateAnnotationMap[managerId] = mutableListOf(annotation.id)
       } else {
-        managerCreateAnnotationMap[managerId]!!.add(annotation.id.toString())
+        managerCreateAnnotationMap[managerId]!!.add(annotation.id)
       }
       result.success(annotation.toFLTCircleAnnotation())
     } catch (e: Exception) {
@@ -43,13 +49,13 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
       val manager = delegate.getManager(managerId) as CircleAnnotationManager
       val annotations = manager.create(annotationOptions.map { it.toCircleAnnotationOptions() })
       annotations.forEach {
-        annotationMap[it.id.toString()] = it
+        annotationMap[it.id] = it
       }
       if (managerCreateAnnotationMap[managerId].isNullOrEmpty()) {
-        managerCreateAnnotationMap[managerId] = annotations.map { it.id.toString() }.toMutableList()
+        managerCreateAnnotationMap[managerId] = annotations.map { it.id }.toMutableList()
       } else {
         managerCreateAnnotationMap[managerId]!!.addAll(
-          annotations.map { it.id.toString() }
+          annotations.map { it.id }
             .toList()
         )
       }
@@ -62,20 +68,20 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
   override fun update(
     managerId: String,
     annotation: FLTCircleAnnotationMessager.CircleAnnotation,
-    result: FLTCircleAnnotationMessager.Result<Void>
+    result: FLTCircleAnnotationMessager.VoidResult
   ) {
     try {
       val manager = delegate.getManager(managerId) as CircleAnnotationManager
 
       if (!annotationMap.containsKey(annotation.id)) {
-        result?.error(Throwable("Annotation has not been added on the map: $annotation."))
+        result.error(Throwable("Annotation has not been added on the map: $annotation."))
         return
       }
       val originalAnnotation = updateAnnotation(annotation)
 
       manager.update(originalAnnotation)
       annotationMap[annotation.id] = originalAnnotation
-      result.success(null)
+      result.success()
     } catch (e: Exception) {
       result.error(e)
     }
@@ -84,7 +90,7 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
   override fun delete(
     managerId: String,
     annotation: FLTCircleAnnotationMessager.CircleAnnotation,
-    result: FLTCircleAnnotationMessager.Result<Void>
+    result: FLTCircleAnnotationMessager.VoidResult
   ) {
     try {
       val manager = delegate.getManager(managerId) as CircleAnnotationManager
@@ -99,13 +105,13 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
       )
       annotationMap.remove(annotation.id)
       managerCreateAnnotationMap[managerId]?.remove(annotation.id)
-      result.success(null)
+      result.success()
     } catch (e: Exception) {
       result.error(e)
     }
   }
 
-  override fun deleteAll(managerId: String, result: FLTCircleAnnotationMessager.Result<Void>) {
+  override fun deleteAll(managerId: String, result: FLTCircleAnnotationMessager.VoidResult) {
     try {
       val manager = delegate.getManager(managerId) as CircleAnnotationManager
       managerCreateAnnotationMap[managerId]?.apply {
@@ -113,7 +119,7 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
         clear()
       }
       manager.deleteAll()
-      result.success(null)
+      result.success()
     } catch (e: Exception) {
       result.error(e)
     }
@@ -151,23 +157,45 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
     return originalAnnotation
   }
 
+  override fun setCircleEmissiveStrength(
+    managerId: String,
+    circleEmissiveStrength: Double,
+    result: FLTCircleAnnotationMessager.VoidResult
+  ) {
+    val manager = delegate.getManager(managerId) as CircleAnnotationManager
+    manager.circleEmissiveStrength = circleEmissiveStrength
+    result.success()
+  }
+
+  override fun getCircleEmissiveStrength(
+    managerId: String,
+    result: FLTCircleAnnotationMessager.NullableResult<Double>
+  ) {
+    val manager = delegate.getManager(managerId) as CircleAnnotationManager
+    if (manager.circleEmissiveStrength != null) {
+      result.success(manager.circleEmissiveStrength!!)
+    } else {
+      result.success(null)
+    }
+  }
+
   override fun setCirclePitchAlignment(
     managerId: String,
     circlePitchAlignment: FLTCircleAnnotationMessager.CirclePitchAlignment,
-    result: FLTCircleAnnotationMessager.Result<Void>
+    result: FLTCircleAnnotationMessager.VoidResult
   ) {
     val manager = delegate.getManager(managerId) as CircleAnnotationManager
-    manager.circlePitchAlignment = CirclePitchAlignment.values()[circlePitchAlignment.ordinal]
-    result.success(null)
+    manager.circlePitchAlignment = circlePitchAlignment.toCirclePitchAlignment()
+    result.success()
   }
 
   override fun getCirclePitchAlignment(
     managerId: String,
-    result: FLTCircleAnnotationMessager.Result<Long>
+    result: FLTCircleAnnotationMessager.NullableResult<FLTCircleAnnotationMessager.CirclePitchAlignment>
   ) {
     val manager = delegate.getManager(managerId) as CircleAnnotationManager
     if (manager.circlePitchAlignment != null) {
-      result.success(manager.circlePitchAlignment!!.ordinal.toLong())
+      result.success(manager.circlePitchAlignment!!.toFLTCirclePitchAlignment())
     } else {
       result.success(null)
     }
@@ -176,20 +204,20 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
   override fun setCirclePitchScale(
     managerId: String,
     circlePitchScale: FLTCircleAnnotationMessager.CirclePitchScale,
-    result: FLTCircleAnnotationMessager.Result<Void>
+    result: FLTCircleAnnotationMessager.VoidResult
   ) {
     val manager = delegate.getManager(managerId) as CircleAnnotationManager
-    manager.circlePitchScale = CirclePitchScale.values()[circlePitchScale.ordinal]
-    result.success(null)
+    manager.circlePitchScale = circlePitchScale.toCirclePitchScale()
+    result.success()
   }
 
   override fun getCirclePitchScale(
     managerId: String,
-    result: FLTCircleAnnotationMessager.Result<Long>
+    result: FLTCircleAnnotationMessager.NullableResult<FLTCircleAnnotationMessager.CirclePitchScale>
   ) {
     val manager = delegate.getManager(managerId) as CircleAnnotationManager
     if (manager.circlePitchScale != null) {
-      result.success(manager.circlePitchScale!!.ordinal.toLong())
+      result.success(manager.circlePitchScale!!.toFLTCirclePitchScale())
     } else {
       result.success(null)
     }
@@ -198,16 +226,16 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
   override fun setCircleTranslate(
     managerId: String,
     circleTranslate: List<Double>,
-    result: FLTCircleAnnotationMessager.Result<Void>
+    result: FLTCircleAnnotationMessager.VoidResult
   ) {
     val manager = delegate.getManager(managerId) as CircleAnnotationManager
     manager.circleTranslate = circleTranslate
-    result.success(null)
+    result.success()
   }
 
   override fun getCircleTranslate(
     managerId: String,
-    result: FLTCircleAnnotationMessager.Result<List<Double>>
+    result: FLTCircleAnnotationMessager.NullableResult<List<Double>>
   ) {
     val manager = delegate.getManager(managerId) as CircleAnnotationManager
     if (manager.circleTranslate != null) {
@@ -220,20 +248,20 @@ class CircleAnnotationController(private val delegate: ControllerDelegate) :
   override fun setCircleTranslateAnchor(
     managerId: String,
     circleTranslateAnchor: FLTCircleAnnotationMessager.CircleTranslateAnchor,
-    result: FLTCircleAnnotationMessager.Result<Void>
+    result: FLTCircleAnnotationMessager.VoidResult
   ) {
     val manager = delegate.getManager(managerId) as CircleAnnotationManager
-    manager.circleTranslateAnchor = CircleTranslateAnchor.values()[circleTranslateAnchor.ordinal]
-    result.success(null)
+    manager.circleTranslateAnchor = circleTranslateAnchor.toCircleTranslateAnchor()
+    result.success()
   }
 
   override fun getCircleTranslateAnchor(
     managerId: String,
-    result: FLTCircleAnnotationMessager.Result<Long>
+    result: FLTCircleAnnotationMessager.NullableResult<FLTCircleAnnotationMessager.CircleTranslateAnchor>
   ) {
     val manager = delegate.getManager(managerId) as CircleAnnotationManager
     if (manager.circleTranslateAnchor != null) {
-      result.success(manager.circleTranslateAnchor!!.ordinal.toLong())
+      result.success(manager.circleTranslateAnchor!!.toFLTCircleTranslateAnchor())
     } else {
       result.success(null)
     }

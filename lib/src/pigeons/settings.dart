@@ -20,12 +20,21 @@ enum ScrollMode {
 }
 
 /// The enum controls how the puck is oriented
-enum PuckBearingSource {
+enum PuckBearing {
   /// Orients the puck to match the direction in which the device is facing.
   HEADING,
 
   /// Orients the puck to match the direction in which the device is moving.
   COURSE,
+}
+
+/// Defines scaling mode. Only applies to location-indicator type layers.
+enum ModelScaleMode {
+  /// Model is scaled so that it's always the same size relative to other map features. The property model-scale specifies how many meters each unit in the model file should cover.
+  MAP,
+
+  /// Model is scaled so that it's always the same size on the screen. The property model-scale specifies how many pixels each unit in model file should cover.
+  VIEWPORT,
 }
 
 /// Gesture configuration allows to control the user touch interaction.
@@ -156,6 +165,7 @@ class LocationPuck2D {
     this.bearingImage,
     this.shadowImage,
     this.scaleExpression,
+    this.opacity,
   });
 
   /// Name of image in sprite to use as the top of the location indicator.
@@ -170,12 +180,16 @@ class LocationPuck2D {
   /// The scale expression of the images. If defined, it will be applied to all the three images.
   String? scaleExpression;
 
+  /// The opacity of the entire location puck
+  double? opacity;
+
   Object encode() {
     return <Object?>[
       topImage,
       bearingImage,
       shadowImage,
       scaleExpression,
+      opacity,
     ];
   }
 
@@ -186,6 +200,7 @@ class LocationPuck2D {
       bearingImage: result[1] as Uint8List?,
       shadowImage: result[2] as Uint8List?,
       scaleExpression: result[3] as String?,
+      opacity: result[4] as double?,
     );
   }
 }
@@ -199,6 +214,11 @@ class LocationPuck3D {
     this.modelScaleExpression,
     this.modelTranslation,
     this.modelRotation,
+    this.modelCastShadows,
+    this.modelReceiveShadows,
+    this.modelScaleMode,
+    this.modelEmissiveStrength,
+    this.modelEmissiveStrengthExpression,
   });
 
   /// An URL for the model file in gltf format.
@@ -222,6 +242,21 @@ class LocationPuck3D {
   /// The rotation of the model.
   List<double?>? modelRotation;
 
+  /// Enable/Disable shadow casting for the 3D location puck.
+  bool? modelCastShadows;
+
+  /// Enable/Disable shadow receiving for the 3D location puck.
+  bool? modelReceiveShadows;
+
+  /// Defines scaling mode. Only applies to location-indicator type layers.
+  ModelScaleMode? modelScaleMode;
+
+  /// Strength of the emission. There is no emission for value 0. For value 1.0, only emissive component (no shading) is displayed and values above 1.0 produce light contribution to surrounding area, for some of the parts (e.g. doors).
+  double? modelEmissiveStrength;
+
+  /// Strength of the emission as Expression string, note that when [modelEmissiveStrengthExpression] is specified, it will overwrite the [modelEmissiveStrength] property. There is no emission for value 0. For value 1.0, only emissive component (no shading) is displayed and values above 1.0 produce light contribution to surrounding area, for some of the parts (e.g. doors).
+  String? modelEmissiveStrengthExpression;
+
   Object encode() {
     return <Object?>[
       modelUri,
@@ -231,6 +266,11 @@ class LocationPuck3D {
       modelScaleExpression,
       modelTranslation,
       modelRotation,
+      modelCastShadows,
+      modelReceiveShadows,
+      modelScaleMode?.index,
+      modelEmissiveStrength,
+      modelEmissiveStrengthExpression,
     ];
   }
 
@@ -244,11 +284,17 @@ class LocationPuck3D {
       modelScaleExpression: result[4] as String?,
       modelTranslation: (result[5] as List<Object?>?)?.cast<double?>(),
       modelRotation: (result[6] as List<Object?>?)?.cast<double?>(),
+      modelCastShadows: result[7] as bool?,
+      modelReceiveShadows: result[8] as bool?,
+      modelScaleMode:
+          result[9] != null ? ModelScaleMode.values[result[9]! as int] : null,
+      modelEmissiveStrength: result[10] as double?,
+      modelEmissiveStrengthExpression: result[11] as String?,
     );
   }
 }
 
-/// Defines what the customised look of the location puck.
+/// Defines what the customised look of the location puck. Note that direct changes to the puck variables won't have any effect, a new puck needs to be set every time.
 class LocationPuck {
   LocationPuck({
     this.locationPuck2D,
@@ -292,7 +338,7 @@ class LocationComponentSettings {
     this.layerAbove,
     this.layerBelow,
     this.puckBearingEnabled,
-    this.puckBearingSource,
+    this.puckBearing,
     this.locationPuck,
   });
 
@@ -305,7 +351,7 @@ class LocationComponentSettings {
   /// The color of the pulsing circle. Works for 2D location puck only.
   int? pulsingColor;
 
-  /// The maximum radius of the pulsing circle. Works for 2D location puck only. This property is specified in pixels.
+  /// The maximum radius of the pulsing circle. Works for 2D location puck only. Note: Setting [pulsingMaxRadius] to LocationComponentConstants.PULSING_MAX_RADIUS_FOLLOW_ACCURACY will set the pulsing circle's maximum radius to follow location accuracy circle. This property is specified in pixels.
   double? pulsingMaxRadius;
 
   /// Whether show accuracy ring with location puck. Works for 2D location puck only.
@@ -327,9 +373,9 @@ class LocationComponentSettings {
   bool? puckBearingEnabled;
 
   /// The enum controls how the puck is oriented
-  PuckBearingSource? puckBearingSource;
+  PuckBearing? puckBearing;
 
-  /// Defines what the customised look of the location puck.
+  /// Defines what the customised look of the location puck. Note that direct changes to the puck variables won't have any effect, a new puck needs to be set every time.
   LocationPuck? locationPuck;
 
   Object encode() {
@@ -344,7 +390,7 @@ class LocationComponentSettings {
       layerAbove,
       layerBelow,
       puckBearingEnabled,
-      puckBearingSource?.index,
+      puckBearing?.index,
       locationPuck?.encode(),
     ];
   }
@@ -362,9 +408,8 @@ class LocationComponentSettings {
       layerAbove: result[7] as String?,
       layerBelow: result[8] as String?,
       puckBearingEnabled: result[9] as bool?,
-      puckBearingSource: result[10] != null
-          ? PuckBearingSource.values[result[10]! as int]
-          : null,
+      puckBearing:
+          result[10] != null ? PuckBearing.values[result[10]! as int] : null,
       locationPuck: result[11] != null
           ? LocationPuck.decode(result[11]! as List<Object?>)
           : null,
@@ -736,55 +781,59 @@ class GesturesSettingsInterface {
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
   GesturesSettingsInterface({BinaryMessenger? binaryMessenger})
-      : _binaryMessenger = binaryMessenger;
-  final BinaryMessenger? _binaryMessenger;
+      : __pigeon_binaryMessenger = binaryMessenger;
+  final BinaryMessenger? __pigeon_binaryMessenger;
 
-  static const MessageCodec<Object?> codec = _GesturesSettingsInterfaceCodec();
+  static const MessageCodec<Object?> pigeonChannelCodec =
+      _GesturesSettingsInterfaceCodec();
 
   Future<GesturesSettings> getSettings() async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.GesturesSettingsInterface.getSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(null) as List<Object?>?;
-    if (replyList == null) {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.GesturesSettingsInterface.getSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
-      );
-    } else if (replyList[0] == null) {
+    } else if (__pigeon_replyList[0] == null) {
       throw PlatformException(
         code: 'null-error',
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (replyList[0] as GesturesSettings?)!;
+      return (__pigeon_replyList[0] as GesturesSettings?)!;
     }
   }
 
-  Future<void> updateSettings(GesturesSettings arg_settings) async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.GesturesSettingsInterface.updateSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList =
-        await channel.send(<Object?>[arg_settings]) as List<Object?>?;
-    if (replyList == null) {
+  Future<void> updateSettings(GesturesSettings settings) async {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.GesturesSettingsInterface.updateSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(<Object?>[settings]) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
-      );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
     } else {
       return;
@@ -792,8 +841,8 @@ class GesturesSettingsInterface {
   }
 }
 
-class _LocationComponentSettingsInterfaceCodec extends StandardMessageCodec {
-  const _LocationComponentSettingsInterfaceCodec();
+class __LocationComponentSettingsInterfaceCodec extends StandardMessageCodec {
+  const __LocationComponentSettingsInterfaceCodec();
   @override
   void writeValue(WriteBuffer buffer, Object? value) {
     if (value is LocationComponentSettings) {
@@ -831,61 +880,65 @@ class _LocationComponentSettingsInterfaceCodec extends StandardMessageCodec {
 }
 
 /// Shows a location puck on the map.
-class LocationComponentSettingsInterface {
-  /// Constructor for [LocationComponentSettingsInterface].  The [binaryMessenger] named argument is
+class _LocationComponentSettingsInterface {
+  /// Constructor for [_LocationComponentSettingsInterface].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  LocationComponentSettingsInterface({BinaryMessenger? binaryMessenger})
-      : _binaryMessenger = binaryMessenger;
-  final BinaryMessenger? _binaryMessenger;
+  _LocationComponentSettingsInterface({BinaryMessenger? binaryMessenger})
+      : __pigeon_binaryMessenger = binaryMessenger;
+  final BinaryMessenger? __pigeon_binaryMessenger;
 
-  static const MessageCodec<Object?> codec =
-      _LocationComponentSettingsInterfaceCodec();
+  static const MessageCodec<Object?> pigeonChannelCodec =
+      __LocationComponentSettingsInterfaceCodec();
 
   Future<LocationComponentSettings> getSettings() async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.LocationComponentSettingsInterface.getSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(null) as List<Object?>?;
-    if (replyList == null) {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter._LocationComponentSettingsInterface.getSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
-      );
-    } else if (replyList[0] == null) {
+    } else if (__pigeon_replyList[0] == null) {
       throw PlatformException(
         code: 'null-error',
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (replyList[0] as LocationComponentSettings?)!;
+      return (__pigeon_replyList[0] as LocationComponentSettings?)!;
     }
   }
 
-  Future<void> updateSettings(LocationComponentSettings arg_settings) async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.LocationComponentSettingsInterface.updateSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList =
-        await channel.send(<Object?>[arg_settings]) as List<Object?>?;
-    if (replyList == null) {
+  Future<void> updateSettings(
+      LocationComponentSettings settings, bool useDefaultPuck2DIfNeeded) async {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter._LocationComponentSettingsInterface.updateSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel
+        .send(<Object?>[settings, useDefaultPuck2DIfNeeded]) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
-      );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
     } else {
       return;
@@ -922,55 +975,59 @@ class ScaleBarSettingsInterface {
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
   ScaleBarSettingsInterface({BinaryMessenger? binaryMessenger})
-      : _binaryMessenger = binaryMessenger;
-  final BinaryMessenger? _binaryMessenger;
+      : __pigeon_binaryMessenger = binaryMessenger;
+  final BinaryMessenger? __pigeon_binaryMessenger;
 
-  static const MessageCodec<Object?> codec = _ScaleBarSettingsInterfaceCodec();
+  static const MessageCodec<Object?> pigeonChannelCodec =
+      _ScaleBarSettingsInterfaceCodec();
 
   Future<ScaleBarSettings> getSettings() async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.ScaleBarSettingsInterface.getSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(null) as List<Object?>?;
-    if (replyList == null) {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.ScaleBarSettingsInterface.getSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
-      );
-    } else if (replyList[0] == null) {
+    } else if (__pigeon_replyList[0] == null) {
       throw PlatformException(
         code: 'null-error',
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (replyList[0] as ScaleBarSettings?)!;
+      return (__pigeon_replyList[0] as ScaleBarSettings?)!;
     }
   }
 
-  Future<void> updateSettings(ScaleBarSettings arg_settings) async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.ScaleBarSettingsInterface.updateSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList =
-        await channel.send(<Object?>[arg_settings]) as List<Object?>?;
-    if (replyList == null) {
+  Future<void> updateSettings(ScaleBarSettings settings) async {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.ScaleBarSettingsInterface.updateSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(<Object?>[settings]) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
-      );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
     } else {
       return;
@@ -1007,55 +1064,59 @@ class CompassSettingsInterface {
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
   CompassSettingsInterface({BinaryMessenger? binaryMessenger})
-      : _binaryMessenger = binaryMessenger;
-  final BinaryMessenger? _binaryMessenger;
+      : __pigeon_binaryMessenger = binaryMessenger;
+  final BinaryMessenger? __pigeon_binaryMessenger;
 
-  static const MessageCodec<Object?> codec = _CompassSettingsInterfaceCodec();
+  static const MessageCodec<Object?> pigeonChannelCodec =
+      _CompassSettingsInterfaceCodec();
 
   Future<CompassSettings> getSettings() async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.CompassSettingsInterface.getSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(null) as List<Object?>?;
-    if (replyList == null) {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.CompassSettingsInterface.getSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
-      );
-    } else if (replyList[0] == null) {
+    } else if (__pigeon_replyList[0] == null) {
       throw PlatformException(
         code: 'null-error',
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (replyList[0] as CompassSettings?)!;
+      return (__pigeon_replyList[0] as CompassSettings?)!;
     }
   }
 
-  Future<void> updateSettings(CompassSettings arg_settings) async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.CompassSettingsInterface.updateSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList =
-        await channel.send(<Object?>[arg_settings]) as List<Object?>?;
-    if (replyList == null) {
+  Future<void> updateSettings(CompassSettings settings) async {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.CompassSettingsInterface.updateSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(<Object?>[settings]) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
-      );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
     } else {
       return;
@@ -1092,56 +1153,59 @@ class AttributionSettingsInterface {
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
   AttributionSettingsInterface({BinaryMessenger? binaryMessenger})
-      : _binaryMessenger = binaryMessenger;
-  final BinaryMessenger? _binaryMessenger;
+      : __pigeon_binaryMessenger = binaryMessenger;
+  final BinaryMessenger? __pigeon_binaryMessenger;
 
-  static const MessageCodec<Object?> codec =
+  static const MessageCodec<Object?> pigeonChannelCodec =
       _AttributionSettingsInterfaceCodec();
 
   Future<AttributionSettings> getSettings() async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.AttributionSettingsInterface.getSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(null) as List<Object?>?;
-    if (replyList == null) {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.AttributionSettingsInterface.getSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
-      );
-    } else if (replyList[0] == null) {
+    } else if (__pigeon_replyList[0] == null) {
       throw PlatformException(
         code: 'null-error',
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (replyList[0] as AttributionSettings?)!;
+      return (__pigeon_replyList[0] as AttributionSettings?)!;
     }
   }
 
-  Future<void> updateSettings(AttributionSettings arg_settings) async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.AttributionSettingsInterface.updateSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList =
-        await channel.send(<Object?>[arg_settings]) as List<Object?>?;
-    if (replyList == null) {
+  Future<void> updateSettings(AttributionSettings settings) async {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.AttributionSettingsInterface.updateSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(<Object?>[settings]) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
-      );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
     } else {
       return;
@@ -1178,55 +1242,59 @@ class LogoSettingsInterface {
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
   LogoSettingsInterface({BinaryMessenger? binaryMessenger})
-      : _binaryMessenger = binaryMessenger;
-  final BinaryMessenger? _binaryMessenger;
+      : __pigeon_binaryMessenger = binaryMessenger;
+  final BinaryMessenger? __pigeon_binaryMessenger;
 
-  static const MessageCodec<Object?> codec = _LogoSettingsInterfaceCodec();
+  static const MessageCodec<Object?> pigeonChannelCodec =
+      _LogoSettingsInterfaceCodec();
 
   Future<LogoSettings> getSettings() async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.LogoSettingsInterface.getSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(null) as List<Object?>?;
-    if (replyList == null) {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.LogoSettingsInterface.getSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
-      );
-    } else if (replyList[0] == null) {
+    } else if (__pigeon_replyList[0] == null) {
       throw PlatformException(
         code: 'null-error',
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (replyList[0] as LogoSettings?)!;
+      return (__pigeon_replyList[0] as LogoSettings?)!;
     }
   }
 
-  Future<void> updateSettings(LogoSettings arg_settings) async {
-    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.mapbox_maps_flutter.LogoSettingsInterface.updateSettings',
-        codec,
-        binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList =
-        await channel.send(<Object?>[arg_settings]) as List<Object?>?;
-    if (replyList == null) {
+  Future<void> updateSettings(LogoSettings settings) async {
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.mapbox_maps_flutter.LogoSettingsInterface.updateSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel =
+        BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(<Object?>[settings]) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
       throw PlatformException(
-        code: 'channel-error',
-        message: 'Unable to establish connection on channel.',
-      );
-    } else if (replyList.length > 1) {
-      throw PlatformException(
-        code: replyList[0]! as String,
-        message: replyList[1] as String?,
-        details: replyList[2],
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
       );
     } else {
       return;

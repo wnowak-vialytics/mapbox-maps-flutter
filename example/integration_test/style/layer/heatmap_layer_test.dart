@@ -11,15 +11,10 @@ import 'package:turf/helpers.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<void> addDelay(int ms) async {
-    await Future<void>.delayed(Duration(milliseconds: ms));
-  }
-
   testWidgets('Add HeatmapLayer', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
-    await addDelay(1000);
 
     await mapboxMap.style.addSource(GeoJsonSource(
         id: "source",
@@ -32,6 +27,7 @@ void main() {
       visibility: Visibility.NONE,
       minZoom: 1.0,
       maxZoom: 20.0,
+      slot: LayerSlot.BOTTOM,
       heatmapColor: Colors.red.value,
       heatmapIntensity: 1.0,
       heatmapOpacity: 1.0,
@@ -42,6 +38,7 @@ void main() {
     expect('source', layer.sourceId);
     expect(layer.minZoom, 1);
     expect(layer.maxZoom, 20);
+    expect(layer.slot, LayerSlot.BOTTOM);
     expect(layer.visibility, Visibility.NONE);
     expect(layer.heatmapColor, Colors.red.value);
     expect(layer.heatmapIntensity, 1.0);

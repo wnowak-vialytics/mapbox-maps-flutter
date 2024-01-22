@@ -11,15 +11,10 @@ import 'package:turf/helpers.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<void> addDelay(int ms) async {
-    await Future<void>.delayed(Duration(milliseconds: ms));
-  }
-
   testWidgets('Add HillshadeLayer', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
-    await addDelay(1000);
 
     await mapboxMap.style.addSource(RasterDemSource(
         id: "source", url: "mapbox://mapbox.mapbox-terrain-dem-v1"));
@@ -30,6 +25,7 @@ void main() {
       visibility: Visibility.NONE,
       minZoom: 1.0,
       maxZoom: 20.0,
+      slot: LayerSlot.BOTTOM,
       hillshadeAccentColor: Colors.red.value,
       hillshadeExaggeration: 1.0,
       hillshadeHighlightColor: Colors.red.value,
@@ -41,6 +37,7 @@ void main() {
     expect('source', layer.sourceId);
     expect(layer.minZoom, 1);
     expect(layer.maxZoom, 20);
+    expect(layer.slot, LayerSlot.BOTTOM);
     expect(layer.visibility, Visibility.NONE);
     expect(layer.hillshadeAccentColor, Colors.red.value);
     expect(layer.hillshadeExaggeration, 1.0);
