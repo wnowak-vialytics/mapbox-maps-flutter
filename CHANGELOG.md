@@ -1,7 +1,18 @@
-### main
+### 1.0.0-rc.1
+
+* Add `LogConfiguration` allowing to intercept logs produced by the plugin. Pass your custom `LogWriterBackend` to `LogConfiguration.registerLogWriterBackend()` to redirect logs produced by the mapping engine to your desired destination.
+* Add `MapWidget.onResourceRequestListener` that can be used to subscribe to resource requests made by the map.
+* [iOS] Re-wire `MapWidget`'s `onScroll` event to be triggered whenever map is being panned instead of triggering it only after pan ends.
+* [iOS] Address crashes on iOS happening when user location is being shown.
+
+### 1.0.0-beta.3
 
 * Add an example representing a traffic route with color based on traffic volumes using LineLayer and Expression.
 * [Android] Fix MapOptions incorrect index access at map creation, leading to map not being created(blank view).
+* [Android] Use hybrid composition(HC) as the default platform view hosting mode on Android.
+* [Android] Add experimental `androidHostingMode` constructor parameter to `MapWidget`. Use this to change the way platform MapView is being hosted by Flutter on Android. This changes the way map view is composited with Flutter UI, read more on this in [Android Platform Views](https://github.com/flutter/flutter/wiki/Android-Platform-Views) guide from the Flutter team.
+* [iOS] `MapboxMap`: `isGestureInProgress()`, `isUserAnimationInProgress()`, `setConstrainMode()`, `setNorthOrientation()`, `setViewportMode()` and `reduceMemoryUse()` are now available on iOS.
+* Bump platform Maps SDK dependencies to 11.2.0-beta.1.
 
 ### 1.0.0-beta.2
 
