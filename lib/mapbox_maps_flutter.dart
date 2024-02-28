@@ -34,6 +34,7 @@ part 'src/pigeons/polyline_annotation_messager.dart';
 part 'src/pigeons/map_interfaces.dart';
 part 'src/pigeons/settings.dart';
 part 'src/pigeons/gesture_listeners.dart';
+part 'src/pigeons/http_factory_settings.dart';
 part 'src/pigeons/log_backend.dart';
 part 'src/style/layer/background_layer.dart';
 part 'src/style/layer/circle_layer.dart';
