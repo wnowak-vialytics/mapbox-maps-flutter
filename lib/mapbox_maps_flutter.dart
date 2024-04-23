@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:meta/meta.dart';
+import 'package:turf/turf.dart' as turf;
 
 import 'src/proxy_binary_messenger.dart' show ProxyBinaryMessenger;
 
@@ -27,10 +28,10 @@ part 'src/map_widget.dart';
 part 'src/mapbox_map.dart';
 part 'src/mapbox_maps_options.dart';
 part 'src/mapbox_maps_platform.dart';
-part 'src/pigeons/circle_annotation_messager.dart';
-part 'src/pigeons/point_annotation_messager.dart';
-part 'src/pigeons/polygon_annotation_messager.dart';
-part 'src/pigeons/polyline_annotation_messager.dart';
+part 'src/pigeons/circle_annotation_messenger.dart';
+part 'src/pigeons/point_annotation_messenger.dart';
+part 'src/pigeons/polygon_annotation_messenger.dart';
+part 'src/pigeons/polyline_annotation_messenger.dart';
 part 'src/pigeons/map_interfaces.dart';
 part 'src/pigeons/settings.dart';
 part 'src/pigeons/gesture_listeners.dart';
@@ -56,3 +57,4 @@ part 'src/style/source/vector_source.dart';
 part 'src/style/style.dart';
 part 'src/location_settings.dart';
 part 'src/log_configuration.dart';
+part 'src/turf_adapters.dart';

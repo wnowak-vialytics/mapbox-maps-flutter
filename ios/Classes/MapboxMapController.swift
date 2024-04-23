@@ -55,7 +55,8 @@ class MapboxMapController: NSObject, FlutterPlatformView {
     ) {
         self.proxyBinaryMessenger = ProxyBinaryMessenger(with: registrar.messenger(), channelSuffix: "/map_\(channelSuffix)")
 
-        HttpServiceFactory.setHttpServiceInterceptorForInterceptor(HttpUseragentInterceptor(pluginVersion: pluginVersion))
+        _ = SettingsServiceFactory.getInstanceFor(.nonPersistent)
+            .set(key: "com.mapbox.common.telemetry.internal.custom_user_agent_fragment", value: "FlutterPlugin/\(pluginVersion)")
 
         mapView = MapView(frame: frame, mapInitOptions: mapInitOptions)
         mapboxMap = mapView.mapboxMap
@@ -68,7 +69,6 @@ class MapboxMapController: NSObject, FlutterPlatformView {
         )
 
         super.init()
-
         channel.setMethodCallHandler { [weak self] in self?.onMethodCall(methodCall: $0, result: $1) }
 
         let styleController = StyleController(styleManager: mapboxMap)
@@ -194,30 +194,28 @@ class MapboxMapController: NSObject, FlutterPlatformView {
         case "map#set_interceptor":
             httpFactoryController!.handleSetInterceptor(methodCall: methodCall, result: result)
             result(nil)
+        case "platform#releaseMethodChannels":
+            releaseMethodChannels()
+            result(nil)
         default:
             result(FlutterMethodNotImplemented)
         }
     }
 
-    final class HttpUseragentInterceptor: HttpServiceInterceptorInterface {
-
-        private var pluginVersion: String
-
-        init(pluginVersion: String) {
-            self.pluginVersion = pluginVersion
-        }
-
-        func onRequest(for request: HttpRequest, continuation: @escaping HttpServiceInterceptorRequestContinuation) {
-            if let oldUseragent = request.headers["userAgent"] {
-                request.headers["userAgent"] = "\(oldUseragent) FlutterPlugin/\(self.pluginVersion)"
-            }
-
-            continuation(.fromHttpRequest(request))
-        }
-
-        func onResponse(for response: HttpResponse, continuation: @escaping HttpServiceInterceptorResponseContinuation) {
-            continuation(response)
-        }
+    private func releaseMethodChannels() {
+        channel.setMethodCallHandler(nil)
+        StyleManagerSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        _CameraManagerSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        _MapInterfaceSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        ProjectionSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        _AnimationManagerSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        _LocationComponentSettingsInterfaceSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        GesturesSettingsInterfaceSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        LogoSettingsInterfaceSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        AttributionSettingsInterfaceSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        CompassSettingsInterfaceSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        ScaleBarSettingsInterfaceSetup.setUp(binaryMessenger: proxyBinaryMessenger, api: nil)
+        annotationController?.tearDown(messenger: proxyBinaryMessenger)
     }
 }
 

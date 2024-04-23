@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:mapbox_maps_example/empty_map_widget.dart' as app;
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -187,7 +187,8 @@ void main() {
     expect(await MapboxMapsOptions.getBaseUrl(), 'https://api.mapbox.com');
     expect(await MapboxMapsOptions.getDataPath(), isNotNull);
     expect(await MapboxMapsOptions.getAssetPath(), isNotNull);
-    expect(await MapboxMapsOptions.getTileStoreUsageMode(), TileStoreUsageMode.READ_ONLY);
+    expect(await MapboxMapsOptions.getTileStoreUsageMode(),
+        TileStoreUsageMode.READ_ONLY);
   });
 
   testWidgets('MapboxMapsOptions read and update', (WidgetTester tester) async {
@@ -197,7 +198,8 @@ void main() {
     final originalBaseURL = await MapboxMapsOptions.getBaseUrl();
     final originalDataPath = await MapboxMapsOptions.getDataPath();
     final originalAssetPath = await MapboxMapsOptions.getAssetPath();
-    final originalTileStoreUsageMode = await MapboxMapsOptions.getTileStoreUsageMode();
+    final originalTileStoreUsageMode =
+        await MapboxMapsOptions.getTileStoreUsageMode();
 
     // given
     final token = 'test token';
@@ -221,7 +223,8 @@ void main() {
     expect(await MapboxOptions.getAccessToken(), token);
     expect(await MapboxMapsOptions.getBaseUrl(), baseUrl);
     expect(await MapboxMapsOptions.getDataPath(), endsWith(dataPath));
-    expect(await MapboxMapsOptions.getAssetPath(), Platform.isAndroid ? "" : endsWith(assetPath));
+    expect(await MapboxMapsOptions.getAssetPath(),
+        Platform.isAndroid ? "" : endsWith(assetPath));
     expect(await MapboxMapsOptions.getTileStoreUsageMode(), tileStoreUsageMode);
     expect(await MapboxMapsOptions.getLanguage(), language);
     expect(await MapboxMapsOptions.getWorldview(), worldview);
@@ -241,8 +244,7 @@ void main() {
     final mapboxMap = await mapFuture;
     var style = mapboxMap.style;
     var options = CameraOptions(
-        center: Point(coordinates: Position(-77.032667, 38.913175)).toJson(),
-        zoom: 10);
+        center: Point(coordinates: Position(-77.032667, 38.913175)), zoom: 10);
 
     app.events.resetOnCameraChanged();
     mapboxMap.setCamera(options);
@@ -297,7 +299,7 @@ void main() {
     final mapboxMap = await mapFuture;
     var style = mapboxMap.style;
     var options = CameraOptions(
-        center: Point(coordinates: Position(-77.032667, 38.913175)).toJson(),
+        center: Point(coordinates: Position(-77.032667, 38.913175)),
         zoom: 10,
         pitch: 0);
 

@@ -1,6 +1,79 @@
+### main
+
+* Introduce `TileCacheBudget`, a property to set per-source cache budgets in either megabytes or tiles. 
+* Expose `iconColorSaturation`, `rasterArrayBand`, `rasterElevation`, `rasterEmissiveStrength`, `hillshadeEmissiveStrength`, and `fillExtrusionEmissiveStrength` on their respective layers. 
+* Mark `MapboxMapsOptions.get/setWorldview()` and `MapboxMapsOptions.get/setLanguage()` as experimental.
+* Bump Pigeon to 17.1.2
+* [iOS] Fix crash in `onStyleImageMissingListener`.
+* Deprecate `cameraForCoordinates`, please use `cameraForCoordinatesPadding` instead.
+* Add a way to disable default puck's image(s) when using `DefaultLocationPuck2D`. By passing an empty byte array, for example, the following code shows a puck 2D with custom top image, default bearing image and no shadow image.
+```
+mapboxMap?.location.updateSettings(LocationComponentSettings(
+    enabled: true,
+    puckBearingEnabled: true,
+    locationPuck:
+        LocationPuck(locationPuck2D: DefaultLocationPuck2D(topImage: list, shadowImage: Uint8List.fromList([]))))
+);
+```
+
+#### ⚠️ Breaking changes
+
+##### Geographical position represented by `Point`s
+
+Geographical positions denoted by `Map<String?, Object?>?` are migrated to [`Point`](https://pub.dev/documentation/turf/latest/turf/Point-class.html) type from [turf](https://pub.dev/packages/turf) package.
+Pass `Point`s directly instead of converting them to JSON.
+*Before:*
+```dart
+CameraOptions(
+    center: Point(
+        coordinates: Position(
+        -0.11968,
+        51.50325,
+    )).toJson())
+```
+*After:*
+```dart
+CameraOptions(
+    center: Point(
+        coordinates: Position(
+        -0.11968,
+        51.50325,
+    )))
+```
+
+##### Screen and geographical positions in map interaction(gestures) callbacks
+`MapWidget`'s `onTapListener`/`onLongTapListener`/`onScrollListener` now receive `MapContentGestureContext` containing both touch position of the gesture, as well as the projected map coordinate corresponding to the touch position.
+*Before:*
+```dart
+onTapListener: { (coordinate)
+    final lat = coordinate.x;
+    final lng = coordinate.y;
+    ...
+}
+```
+
+*After:*
+```dart
+onTapListener: { (context)
+    final coordinates = context.point.coordinates; // Position
+    final touchPosition = context.touchPosition; // ScreenCoordinate
+    ...
+}
+```
+
+
+* Fix camera center not applied from map init options.
+* [iOS] Free up resources upon map widget disposal. This should help to reduce the amount of used memory when previously shown map widget is removed from the widget tree.
+
+### 1.1.0
+
+* [Android] Fix `maps-lifecycle` plugin crash with `java.lang.IllegalStateException: Please ensure that the hosting activity/fragment is a valid LifecycleOwner`.
+* Mark `MapboxMapsOptions.get/setWorldview()` and `MapboxMapsOptions.get/setLanguage()` as experimental.
+* Update Maps SDK to 11.3.0.
+
 ### 1.0.0
 
-* Add `MapboxMapsOptions.get/setWorldview()` and ``MapboxMapsOptions.get/setLanguage()`. Use this to to adjust administrative boundaries/map language based on the map's audience.
+* Add `MapboxMapsOptions.get/setWorldview()` and `MapboxMapsOptions.get/setLanguage()`. Use this to to adjust administrative boundaries/map language based on the map's audience.
 Read more about [Mapbox worldviews](https://docs.mapbox.com/help/glossary/worldview/) and [language support](https://docs.mapbox.com/help/troubleshooting/change-language/).
 * Add a way to specify custom id for annotation manager(and subsequently its backing layer's and source's ids).
 * Add `below` parameter to `createAnnotationManager()`, use this to control the position of the annotation layer in relation to other style layers.

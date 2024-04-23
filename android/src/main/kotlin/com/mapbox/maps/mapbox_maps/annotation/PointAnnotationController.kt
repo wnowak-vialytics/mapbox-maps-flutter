@@ -35,7 +35,7 @@ import toTextTransform
 import toTextTranslateAnchor
 import java.io.ByteArrayOutputStream
 
-class PointAnnotationController(private val delegate: ControllerDelegate) : _PointAnnotationMessager {
+class PointAnnotationController(private val delegate: ControllerDelegate) : _PointAnnotationMessenger {
   private val annotationMap = mutableMapOf<String, com.mapbox.maps.plugin.annotation.generated.PointAnnotation>()
   private val managerCreateAnnotationMap = mutableMapOf<String, MutableList<String>>()
 
@@ -708,6 +708,28 @@ class PointAnnotationController(private val delegate: ControllerDelegate) : _Poi
     val manager = delegate.getManager(managerId) as PointAnnotationManager
     if (manager.textRotationAlignment != null) {
       callback(Result.success(manager.textRotationAlignment!!.toFLTTextRotationAlignment()))
+    } else {
+      callback(Result.success(null))
+    }
+  }
+
+  override fun setIconColorSaturation(
+    managerId: String,
+    iconColorSaturation: Double,
+    callback: (Result<Unit>) -> Unit
+  ) {
+    val manager = delegate.getManager(managerId) as PointAnnotationManager
+    manager.iconColorSaturation = iconColorSaturation
+    callback(Result.success(Unit))
+  }
+
+  override fun getIconColorSaturation(
+    managerId: String,
+    callback: (Result<Double?>) -> Unit
+  ) {
+    val manager = delegate.getManager(managerId) as PointAnnotationManager
+    if (manager.iconColorSaturation != null) {
+      callback(Result.success(manager.iconColorSaturation!!))
     } else {
       callback(Result.success(null))
     }
