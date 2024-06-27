@@ -10,6 +10,7 @@ import Foundation
 #else
   #error("Unsupported platform.")
 #endif
+import struct Turf.Point
 
 private func wrapResult(_ result: Any?) -> [Any?] {
   return [result]
@@ -44,6 +45,7 @@ private func nilOrValue<T>(_ value: Any?) -> T? {
 }
 
 /// Orientation of circle when map is pitched.
+/// Default value: "viewport".
 enum CirclePitchAlignment: Int {
   /// The circle is aligned to the plane of the map.
   case mAP = 0
@@ -52,6 +54,7 @@ enum CirclePitchAlignment: Int {
 }
 
 /// Controls the scaling behavior of the circle when the map is pitched.
+/// Default value: "map".
 enum CirclePitchScale: Int {
   /// Circles are scaled according to their apparent distance to the camera.
   case mAP = 0
@@ -60,6 +63,7 @@ enum CirclePitchScale: Int {
 }
 
 /// Controls the frame of reference for `circle-translate`.
+/// Default value: "map".
 enum CircleTranslateAnchor: Int {
   /// The circle is translated relative to the map.
   case mAP = 0
@@ -72,27 +76,34 @@ struct CircleAnnotation {
   /// The id for annotation
   var id: String
   /// The geometry that determines the location/shape of this annotation
-  var geometry: [String?: Any?]?
+  var geometry: Point
   /// Sorts features in ascending order based on this value. Features with a higher sort key will appear above features with a lower sort key.
   var circleSortKey: Double?
   /// Amount to blur the circle. 1 blurs the circle such that only the centerpoint is full opacity.
+  /// Default value: 0.
   var circleBlur: Double?
   /// The fill color of the circle.
+  /// Default value: "#000000".
   var circleColor: Int64?
   /// The opacity at which the circle will be drawn.
+  /// Default value: 1. Value range: [0, 1]
   var circleOpacity: Double?
   /// Circle radius.
+  /// Default value: 5. Minimum value: 0.
   var circleRadius: Double?
   /// The stroke color of the circle.
+  /// Default value: "#000000".
   var circleStrokeColor: Int64?
   /// The opacity of the circle's stroke.
+  /// Default value: 1. Value range: [0, 1]
   var circleStrokeOpacity: Double?
   /// The width of the circle's stroke. Strokes are placed outside of the `circle-radius`.
+  /// Default value: 0. Minimum value: 0.
   var circleStrokeWidth: Double?
 
   static func fromList(_ list: [Any?]) -> CircleAnnotation? {
     let id = list[0] as! String
-    let geometry: [String?: Any?]? = nilOrValue(list[1])
+    let geometry = Point.fromList(list[1] as! [Any?])!
     let circleSortKey: Double? = nilOrValue(list[2])
     let circleBlur: Double? = nilOrValue(list[3])
     let circleColor: Int64? = isNullish(list[4]) ? nil : (list[4] is Int64? ? list[4] as! Int64? : Int64(list[4] as! Int32))
@@ -118,7 +129,7 @@ struct CircleAnnotation {
   func toList() -> [Any?] {
     return [
       id,
-      geometry,
+      geometry.toList(),
       circleSortKey,
       circleBlur,
       circleColor,
@@ -134,26 +145,33 @@ struct CircleAnnotation {
 /// Generated class from Pigeon that represents data sent in messages.
 struct CircleAnnotationOptions {
   /// The geometry that determines the location/shape of this annotation
-  var geometry: [String?: Any?]?
+  var geometry: Point
   /// Sorts features in ascending order based on this value. Features with a higher sort key will appear above features with a lower sort key.
   var circleSortKey: Double?
   /// Amount to blur the circle. 1 blurs the circle such that only the centerpoint is full opacity.
+  /// Default value: 0.
   var circleBlur: Double?
   /// The fill color of the circle.
+  /// Default value: "#000000".
   var circleColor: Int64?
   /// The opacity at which the circle will be drawn.
+  /// Default value: 1. Value range: [0, 1]
   var circleOpacity: Double?
   /// Circle radius.
+  /// Default value: 5. Minimum value: 0.
   var circleRadius: Double?
   /// The stroke color of the circle.
+  /// Default value: "#000000".
   var circleStrokeColor: Int64?
   /// The opacity of the circle's stroke.
+  /// Default value: 1. Value range: [0, 1]
   var circleStrokeOpacity: Double?
   /// The width of the circle's stroke. Strokes are placed outside of the `circle-radius`.
+  /// Default value: 0. Minimum value: 0.
   var circleStrokeWidth: Double?
 
   static func fromList(_ list: [Any?]) -> CircleAnnotationOptions? {
-    let geometry: [String?: Any?]? = nilOrValue(list[0])
+    let geometry = Point.fromList(list[0] as! [Any?])!
     let circleSortKey: Double? = nilOrValue(list[1])
     let circleBlur: Double? = nilOrValue(list[2])
     let circleColor: Int64? = isNullish(list[3]) ? nil : (list[3] is Int64? ? list[3] as! Int64? : Int64(list[3] as! Int32))
@@ -177,7 +195,7 @@ struct CircleAnnotationOptions {
   }
   func toList() -> [Any?] {
     return [
-      geometry,
+      geometry.toList(),
       circleSortKey,
       circleBlur,
       circleColor,
@@ -194,6 +212,8 @@ private class OnCircleAnnotationClickListenerCodecReader: FlutterStandardReader 
     switch type {
     case 128:
       return CircleAnnotation.fromList(self.readValue() as! [Any?])
+    case 129:
+      return Point.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -204,6 +224,9 @@ private class OnCircleAnnotationClickListenerCodecWriter: FlutterStandardWriter 
   override func writeValue(_ value: Any) {
     if let value = value as? CircleAnnotation {
       super.writeByte(128)
+      super.writeValue(value.toList())
+    } else if let value = value as? Point {
+      super.writeByte(129)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -269,6 +292,8 @@ private class _CircleAnnotationMessengerCodecReader: FlutterStandardReader {
       return CircleAnnotationOptions.fromList(self.readValue() as! [Any?])
     case 131:
       return CircleAnnotationOptions.fromList(self.readValue() as! [Any?])
+    case 132:
+      return Point.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -288,6 +313,9 @@ private class _CircleAnnotationMessengerCodecWriter: FlutterStandardWriter {
       super.writeValue(value.toList())
     } else if let value = value as? CircleAnnotationOptions {
       super.writeByte(131)
+      super.writeValue(value.toList())
+    } else if let value = value as? Point {
+      super.writeByte(132)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)

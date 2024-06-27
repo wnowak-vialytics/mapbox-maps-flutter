@@ -4,6 +4,8 @@
 package com.mapbox.maps.mapbox_maps.pigeons
 
 import android.util.Log
+import com.mapbox.geojson.Polygon
+import com.mapbox.maps.mapbox_maps.mapping.turf.*
 import io.flutter.plugin.common.BasicMessageChannel
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MessageCodec
@@ -35,7 +37,10 @@ private fun createConnectionError(channelName: String): FlutterError {
   return FlutterError("channel-error", "Unable to establish connection on channel: '$channelName'.", "")
 }
 
-/** Controls the frame of reference for `fill-translate`. */
+/**
+ * Controls the frame of reference for `fill-translate`.
+ * Default value: "map".
+ */
 enum class FillTranslateAnchor(val raw: Int) {
   /** The fill is translated relative to the map. */
   MAP(0),
@@ -54,12 +59,18 @@ data class PolygonAnnotation(
   /** The id for annotation */
   val id: String,
   /** The geometry that determines the location/shape of this annotation */
-  val geometry: Map<String?, Any?>? = null,
+  val geometry: Polygon,
   /** Sorts features in ascending order based on this value. Features with a higher sort key will appear above features with a lower sort key. */
   val fillSortKey: Double? = null,
-  /** The color of the filled part of this layer. This color can be specified as `rgba` with an alpha component and the color's opacity will not affect the opacity of the 1px stroke, if it is used. */
+  /**
+   * The color of the filled part of this layer. This color can be specified as `rgba` with an alpha component and the color's opacity will not affect the opacity of the 1px stroke, if it is used.
+   * Default value: "#000000".
+   */
   val fillColor: Long? = null,
-  /** The opacity of the entire fill layer. In contrast to the `fill-color`, this value will also affect the 1px stroke around the fill, if the stroke is used. */
+  /**
+   * The opacity of the entire fill layer. In contrast to the `fill-color`, this value will also affect the 1px stroke around the fill, if the stroke is used.
+   * Default value: 1. Value range: [0, 1]
+   */
   val fillOpacity: Double? = null,
   /** The outline color of the fill. Matches the value of `fill-color` if unspecified. */
   val fillOutlineColor: Long? = null,
@@ -71,7 +82,7 @@ data class PolygonAnnotation(
     @Suppress("UNCHECKED_CAST")
     fun fromList(list: List<Any?>): PolygonAnnotation {
       val id = list[0] as String
-      val geometry = list[1] as Map<String?, Any?>?
+      val geometry = PolygonDecoder.fromList(list[1] as List<Any?>)
       val fillSortKey = list[2] as Double?
       val fillColor = list[3].let { if (it is Int) it.toLong() else it as Long? }
       val fillOpacity = list[4] as Double?
@@ -83,7 +94,7 @@ data class PolygonAnnotation(
   fun toList(): List<Any?> {
     return listOf<Any?>(
       id,
-      geometry,
+      geometry.toList(),
       fillSortKey,
       fillColor,
       fillOpacity,
@@ -96,12 +107,18 @@ data class PolygonAnnotation(
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PolygonAnnotationOptions(
   /** The geometry that determines the location/shape of this annotation */
-  val geometry: Map<String?, Any?>? = null,
+  val geometry: Polygon,
   /** Sorts features in ascending order based on this value. Features with a higher sort key will appear above features with a lower sort key. */
   val fillSortKey: Double? = null,
-  /** The color of the filled part of this layer. This color can be specified as `rgba` with an alpha component and the color's opacity will not affect the opacity of the 1px stroke, if it is used. */
+  /**
+   * The color of the filled part of this layer. This color can be specified as `rgba` with an alpha component and the color's opacity will not affect the opacity of the 1px stroke, if it is used.
+   * Default value: "#000000".
+   */
   val fillColor: Long? = null,
-  /** The opacity of the entire fill layer. In contrast to the `fill-color`, this value will also affect the 1px stroke around the fill, if the stroke is used. */
+  /**
+   * The opacity of the entire fill layer. In contrast to the `fill-color`, this value will also affect the 1px stroke around the fill, if the stroke is used.
+   * Default value: 1. Value range: [0, 1]
+   */
   val fillOpacity: Double? = null,
   /** The outline color of the fill. Matches the value of `fill-color` if unspecified. */
   val fillOutlineColor: Long? = null,
@@ -112,7 +129,7 @@ data class PolygonAnnotationOptions(
   companion object {
     @Suppress("UNCHECKED_CAST")
     fun fromList(list: List<Any?>): PolygonAnnotationOptions {
-      val geometry = list[0] as Map<String?, Any?>?
+      val geometry = PolygonDecoder.fromList(list[0] as List<Any?>)
       val fillSortKey = list[1] as Double?
       val fillColor = list[2].let { if (it is Int) it.toLong() else it as Long? }
       val fillOpacity = list[3] as Double?
@@ -123,7 +140,7 @@ data class PolygonAnnotationOptions(
   }
   fun toList(): List<Any?> {
     return listOf<Any?>(
-      geometry,
+      geometry.toList(),
       fillSortKey,
       fillColor,
       fillOpacity,
@@ -138,6 +155,11 @@ private object OnPolygonAnnotationClickListenerCodec : StandardMessageCodec() {
     return when (type) {
       128.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
+          PolygonDecoder.fromList(it)
+        }
+      }
+      129.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
           PolygonAnnotation.fromList(it)
         }
       }
@@ -146,8 +168,12 @@ private object OnPolygonAnnotationClickListenerCodec : StandardMessageCodec() {
   }
   override fun writeValue(stream: ByteArrayOutputStream, value: Any?) {
     when (value) {
-      is PolygonAnnotation -> {
+      is Polygon -> {
         stream.write(128)
+        writeValue(stream, value.toList())
+      }
+      is PolygonAnnotation -> {
+        stream.write(129)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -187,7 +213,7 @@ private object _PolygonAnnotationMessengerCodec : StandardMessageCodec() {
     return when (type) {
       128.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PolygonAnnotation.fromList(it)
+          PolygonDecoder.fromList(it)
         }
       }
       129.toByte() -> {
@@ -197,10 +223,15 @@ private object _PolygonAnnotationMessengerCodec : StandardMessageCodec() {
       }
       130.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PolygonAnnotationOptions.fromList(it)
+          PolygonAnnotation.fromList(it)
         }
       }
       131.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PolygonAnnotationOptions.fromList(it)
+        }
+      }
+      132.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PolygonAnnotationOptions.fromList(it)
         }
@@ -210,7 +241,7 @@ private object _PolygonAnnotationMessengerCodec : StandardMessageCodec() {
   }
   override fun writeValue(stream: ByteArrayOutputStream, value: Any?) {
     when (value) {
-      is PolygonAnnotation -> {
+      is Polygon -> {
         stream.write(128)
         writeValue(stream, value.toList())
       }
@@ -218,12 +249,16 @@ private object _PolygonAnnotationMessengerCodec : StandardMessageCodec() {
         stream.write(129)
         writeValue(stream, value.toList())
       }
-      is PolygonAnnotationOptions -> {
+      is PolygonAnnotation -> {
         stream.write(130)
         writeValue(stream, value.toList())
       }
       is PolygonAnnotationOptions -> {
         stream.write(131)
+        writeValue(stream, value.toList())
+      }
+      is PolygonAnnotationOptions -> {
+        stream.write(132)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)

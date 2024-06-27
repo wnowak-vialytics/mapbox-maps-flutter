@@ -32,6 +32,7 @@ import 'style/source/geojson_source_test.dart' as geojson_source_test;
 import 'style/source/image_source_test.dart' as image_source_test;
 import 'style/source/raster_source_test.dart' as raster_source_test;
 import 'style/source/rasterdem_source_test.dart' as rasterdem_source_test;
+import 'style/source/rasterarray_source_test.dart' as rasterarray_source_test;
 import 'style/source/vector_source_test.dart' as vector_source_test;
 import 'style/style_test.dart' as style_test;
 import 'location_test.dart' as location_test;
@@ -39,6 +40,7 @@ import 'logo_test.dart' as logo_test;
 import 'attribution_test.dart' as attribution_test;
 import 'compass_test.dart' as compass_test;
 import 'scale_bar_test.dart' as scale_bar_test;
+import 'offline_test.dart' as offline_test;
 
 void main() {
   animation_test.main();
@@ -51,6 +53,8 @@ void main() {
   compass_test.main();
   scale_bar_test.main();
 
+  // offline_test
+  offline_test.main();
   // annotation tests
   circle_annotation_manager_test.main();
   circle_annotation_test.main();
@@ -81,6 +85,7 @@ void main() {
   vector_source_test.main();
   rasterdem_source_test.main();
   raster_source_test.main();
+  rasterarray_source_test.main();
   image_source_test.main();
   geojson_source_test.main();
 

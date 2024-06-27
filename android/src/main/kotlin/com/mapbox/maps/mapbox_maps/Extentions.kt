@@ -1,9 +1,16 @@
 package com.mapbox.maps.mapbox_maps
 
 import android.content.Context
+import android.graphics.Bitmap
 import com.google.gson.Gson
+import com.mapbox.bindgen.Expected
+import com.mapbox.bindgen.None
+import com.mapbox.bindgen.Value
+import com.mapbox.common.TileRegionError
 import com.mapbox.geojson.*
 import com.mapbox.maps.EdgeInsets
+import com.mapbox.maps.StylePackError
+import com.mapbox.maps.extension.style.expressions.dsl.generated.min
 import com.mapbox.maps.extension.style.layers.properties.generated.ProjectionName
 import com.mapbox.maps.extension.style.light.LightPosition
 import com.mapbox.maps.extension.style.light.generated.ambientLight
@@ -11,12 +18,60 @@ import com.mapbox.maps.extension.style.light.generated.directionalLight
 import com.mapbox.maps.extension.style.light.generated.flatLight
 import com.mapbox.maps.extension.style.projection.generated.Projection
 import com.mapbox.maps.extension.style.types.StyleTransition
+import com.mapbox.maps.logE
 import com.mapbox.maps.mapbox_maps.pigeons.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 
 // FLT to Android
 
+fun GlyphsRasterizationMode.toGlyphsRasterizationMode(): com.mapbox.maps.GlyphsRasterizationMode {
+  return when (this) {
+    GlyphsRasterizationMode.NO_GLYPHS_RASTERIZED_LOCALLY -> com.mapbox.maps.GlyphsRasterizationMode.NO_GLYPHS_RASTERIZED_LOCALLY
+    GlyphsRasterizationMode.ALL_GLYPHS_RASTERIZED_LOCALLY -> com.mapbox.maps.GlyphsRasterizationMode.ALL_GLYPHS_RASTERIZED_LOCALLY
+    GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY -> com.mapbox.maps.GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY
+  }
+}
+
+fun com.mapbox.maps.GlyphsRasterizationMode.toFLTGlyphsRasterizationMode(): GlyphsRasterizationMode {
+  return when (this) {
+    com.mapbox.maps.GlyphsRasterizationMode.NO_GLYPHS_RASTERIZED_LOCALLY -> GlyphsRasterizationMode.NO_GLYPHS_RASTERIZED_LOCALLY
+    com.mapbox.maps.GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY -> GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY
+    com.mapbox.maps.GlyphsRasterizationMode.ALL_GLYPHS_RASTERIZED_LOCALLY -> GlyphsRasterizationMode.ALL_GLYPHS_RASTERIZED_LOCALLY
+  }
+}
+fun GlyphsRasterizationOptions.toGlyphsRasterizationOptions(): com.mapbox.maps.GlyphsRasterizationOptions {
+  return com.mapbox.maps.GlyphsRasterizationOptions.Builder()
+    .rasterizationMode(rasterizationMode.toGlyphsRasterizationMode())
+    .fontFamily(fontFamily)
+    .build()
+}
+fun MapSnapshotOptions.toSnapshotOptions(context: Context): com.mapbox.maps.MapSnapshotOptions {
+  return com.mapbox.maps.MapSnapshotOptions.Builder()
+    .size(size.toSize(context))
+    .pixelRatio(pixelRatio.toFloat())
+    .glyphsRasterizationOptions(glyphsRasterizationOptions?.toGlyphsRasterizationOptions())
+    .build()
+}
+
+fun MapSnapshotOptions.toSnapshotOverlayOptions(): com.mapbox.maps.SnapshotOverlayOptions {
+  return com.mapbox.maps.SnapshotOverlayOptions(
+    showLogo = showsLogo ?: true,
+    showAttributes = showsAttribution ?: true
+  )
+}
+fun Size.toSize(context: Context): com.mapbox.maps.Size {
+  return com.mapbox.maps.Size(width.toDevicePixels(context), height.toDevicePixels(context))
+}
+fun TileCoverOptions.toTileCoverOptions(): com.mapbox.maps.TileCoverOptions {
+  return com.mapbox.maps.TileCoverOptions.Builder()
+    .tileSize(tileSize?.toShort())
+    .maxZoom(maxZoom?.toByte())
+    .minZoom(minZoom?.toByte())
+    .roundZoom(roundZoom)
+    .build()
+}
 fun ModelScaleMode.toModelScaleMode(): com.mapbox.maps.plugin.ModelScaleMode {
   return when (this) {
     ModelScaleMode.VIEWPORT -> com.mapbox.maps.plugin.ModelScaleMode.VIEWPORT
@@ -31,12 +86,14 @@ fun TileStoreUsageMode.toTileStoreUsageMode(): com.mapbox.maps.TileStoreUsageMod
     TileStoreUsageMode.READ_ONLY -> com.mapbox.maps.TileStoreUsageMode.READ_ONLY
   }
 }
+
 fun StyleProjectionName.toProjectionName(): ProjectionName {
   return when (this) {
     StyleProjectionName.GLOBE -> ProjectionName.GLOBE
     StyleProjectionName.MERCATOR -> ProjectionName.MERCATOR
   }
 }
+
 fun StyleProjection.toProjection(): com.mapbox.maps.extension.style.projection.generated.Projection {
   return com.mapbox.maps.extension.style.projection.generated.Projection(name.toProjectionName())
 }
@@ -242,36 +299,6 @@ fun Map<String?, Any?>.toPoint(): Point {
   return Point.fromLngLat(longitude, latitude, boundingBox)
 }
 
-fun Map<String?, Any?>.toPoints(): List<Point> {
-  return (this["coordinates"] as List<List<Double>>).map {
-    Point.fromLngLat(it.first(), it.last())
-  }
-}
-
-fun Map<String?, Any?>.toPointsList(): List<List<Point>> {
-  return (this["coordinates"] as List<List<List<Double>>>).map {
-    it.map {
-      Point.fromLngLat(it.first(), it.last())
-    }
-  }
-}
-
-fun Map<String?, Any?>.toLineString(): LineString {
-  return LineString.fromLngLats(
-    (this["coordinates"] as List<List<Double>>).map {
-      Point.fromLngLat(it.first(), it.last())
-    }
-  )
-}
-
-fun Map<String?, Any?>.toPolygon(): Polygon {
-  return Polygon.fromLngLats(
-    (this["coordinates"] as List<List<List<Double>>>).map {
-      it.map { Point.fromLngLat(it.first(), it.last()) }
-    }
-  )
-}
-
 fun CoordinateBounds.toCoordinateBounds() =
   com.mapbox.maps.CoordinateBounds(southwest, northeast, infiniteBounds)
 
@@ -314,25 +341,32 @@ fun Map<String?, Any?>.toGeometry(): Geometry {
     this["type"] == "Point" -> {
       return Point.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "Polygon" -> {
       return Polygon.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "MultiPolygon" -> {
       return MultiPolygon.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "MultiPoint" -> {
       return MultiPoint.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "MultiLineString" -> {
       return MultiLineString.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "LineString" -> {
       return LineString.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "GeometryCollection" -> {
       return GeometryCollection.fromJson(Gson().toJson(this))
     }
-    else -> throw(RuntimeException("Unsupported Geometry: ${Gson().toJson(this)}"))
+
+    else -> throw (RuntimeException("Unsupported Geometry: ${Gson().toJson(this)}"))
   }
 }
 
@@ -341,6 +375,10 @@ fun Number.toDevicePixels(context: Context): Float {
 }
 
 // Android to FLT
+
+fun com.mapbox.maps.CanonicalTileID.toFLTCanonicalTileID(): CanonicalTileID {
+  return CanonicalTileID(z = z.toLong(), x = x.toLong(), y = y.toLong())
+}
 
 fun com.mapbox.common.LoggingLevel.toFLTLoggingLevel(): LoggingLevel {
   return when (this) {
@@ -368,12 +406,16 @@ fun ProjectionName.toFLTProjectionName(): StyleProjectionName {
   return when (this) {
     ProjectionName.GLOBE -> StyleProjectionName.GLOBE
     ProjectionName.MERCATOR -> StyleProjectionName.MERCATOR
-    else -> { throw java.lang.RuntimeException("Projection $this is not supported.") }
+    else -> {
+      throw java.lang.RuntimeException("Projection $this is not supported.")
+    }
   }
 }
+
 fun Projection.toFLTProjection(): StyleProjection {
   return StyleProjection(name.toFLTProjectionName())
 }
+
 fun com.mapbox.maps.StyleObjectInfo.toFLTStyleObjectInfo(): StyleObjectInfo {
   return StyleObjectInfo(id, type)
 }
@@ -398,6 +440,7 @@ fun com.mapbox.maps.QueriedFeature.toFLTQueriedFeature(): QueriedFeature {
 fun com.mapbox.maps.QueriedRenderedFeature.toFLTQueriedRenderedFeature(): QueriedRenderedFeature {
   return QueriedRenderedFeature(queriedFeature.toFLTQueriedFeature(), layers)
 }
+
 fun com.mapbox.maps.QueriedSourceFeature.toFLTQueriedSourceFeature(): QueriedSourceFeature {
   return QueriedSourceFeature(queriedFeature.toFLTQueriedFeature())
 }
@@ -429,33 +472,6 @@ fun com.mapbox.maps.MapOptions.toFLTMapOptions(context: Context): MapOptions {
 
 fun com.mapbox.maps.Size.toFLTSize(context: Context): Size {
   return Size(width.toLogicalPixels(context), height.toLogicalPixels(context))
-}
-
-fun Point.toMap(): Map<String?, Any> {
-  val map = mutableMapOf<String?, Any>()
-  map["coordinates"] = coordinates()
-  bbox()?.let {
-    map["bbox"] = mapOf(Pair("southwest", it.southwest()), Pair("northeast", it.northeast()))
-  }
-  return map
-}
-
-fun Polygon.toMap(): Map<String?, Any> {
-  val map = mutableMapOf<String?, Any>()
-  map["coordinates"] = coordinates().map { it.map { it.coordinates() } }
-  bbox()?.let {
-    map["bbox"] = mapOf(Pair("southwest", it.southwest()), Pair("northeast", it.northeast()))
-  }
-  return map
-}
-
-fun LineString.toMap(): Map<String?, Any> {
-  val map = mutableMapOf<String?, Any>()
-  map["coordinates"] = coordinates().map { it.coordinates() }
-  bbox()?.let {
-    map["bbox"] = mapOf(Pair("southwest", it.southwest()), Pair("northeast", it.northeast()))
-  }
-  return map
 }
 
 fun com.mapbox.maps.ScreenCoordinate.toFLTScreenCoordinate(context: Context): ScreenCoordinate {
@@ -508,6 +524,7 @@ fun JSONObject.toMap(): Map<String?, Any?> = keys().asSequence().associateWith {
       val map = (0 until value.length()).associate { Pair(it.toString(), value[it]) }
       JSONObject(map).toMap().values.toList()
     }
+
     is JSONObject -> value.toMap()
     JSONObject.NULL -> null
     else -> value
@@ -516,4 +533,206 @@ fun JSONObject.toMap(): Map<String?, Any?> = keys().asSequence().associateWith {
 
 fun Number.toLogicalPixels(context: Context): Double {
   return this.toDouble() / context.resources.displayMetrics.density
+}
+
+fun Bitmap.toMbxImage(): MbxImage {
+  val outputStream = ByteArrayOutputStream(byteCount)
+  compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+  return MbxImage(width.toLong(), height.toLong(), outputStream.toByteArray())
+}
+
+fun StylePackLoadOptions.toStylePackLoadOptions(): com.mapbox.maps.StylePackLoadOptions {
+  return com.mapbox.maps.StylePackLoadOptions.Builder()
+    .glyphsRasterizationMode(glyphsRasterizationMode?.toGlyphsRasterizationMode())
+    .metadata(metadata?.toValue())
+    .acceptExpired(acceptExpired)
+    .build()
+}
+
+fun com.mapbox.maps.StylePack.toFLTStylePack(): StylePack {
+  return StylePack(
+    styleURI = this.styleURI,
+    glyphsRasterizationMode = this.glyphsRasterizationMode.toFLTGlyphsRasterizationMode(),
+    requiredResourceCount = this.requiredResourceCount,
+    completedResourceSize = this.completedResourceCount,
+    completedResourceCount = this.completedResourceCount,
+    expires = this.expires?.time
+  )
+}
+
+fun com.mapbox.maps.StylePackLoadProgress.toFLTStylePackLoadProgress(): StylePackLoadProgress {
+  return StylePackLoadProgress(
+    this.completedResourceCount,
+    this.completedResourceSize,
+    this.erroredResourceCount,
+    this.requiredResourceCount,
+    this.loadedResourceCount,
+    this.loadedResourceSize
+  )
+}
+
+fun TilesetDescriptorOptions.toTilesetDescriptorOptions(): com.mapbox.maps.TilesetDescriptorOptions {
+  val builder = com.mapbox.maps.TilesetDescriptorOptions.Builder()
+    .styleURI(styleURI)
+    .minZoom(minZoom.toByte())
+    .maxZoom(maxZoom.toByte())
+  pixelRatio?.let { builder.pixelRatio(it.toFloat()) }
+  tilesets?.let { builder.tilesets(it) }
+  stylePackOptions?.let { builder.stylePackOptions(it.toStylePackLoadOptions()) }
+  extraOptions?.let { builder.extraOptions(it.toValue()) }
+  return builder.build()
+}
+
+fun NetworkRestriction.toNetworkRestriction(): com.mapbox.common.NetworkRestriction {
+  return when (this) {
+    NetworkRestriction.DISALLOW_ALL -> com.mapbox.common.NetworkRestriction.DISALLOW_ALL
+    NetworkRestriction.DISALLOW_EXPENSIVE -> com.mapbox.common.NetworkRestriction.DISALLOW_EXPENSIVE
+    NetworkRestriction.NONE -> com.mapbox.common.NetworkRestriction.NONE
+  }
+}
+
+fun com.mapbox.common.TileRegion.toFLTTileRegion(): TileRegion {
+  return TileRegion(
+    this.id,
+    this.requiredResourceCount,
+    this.completedResourceCount,
+    this.completedResourceSize
+  )
+}
+
+fun TileRegionEstimateOptions.toTileRegionEstimateOptions(): com.mapbox.common.TileRegionEstimateOptions {
+  return com.mapbox.common.TileRegionEstimateOptions(
+    this.errorMargin.toFloat(),
+    this.preciseEstimationTimeout.toLong(),
+    this.preciseEstimationTimeout.toLong(),
+    this.extraOptions?.toValue()
+  )
+}
+
+fun com.mapbox.common.TileRegionEstimateResult.toFLTTileRegionEstimateResult(): TileRegionEstimateResult {
+  return TileRegionEstimateResult(
+    this.errorMargin, this.transferSize, this.storageSize,
+  )
+}
+
+fun com.mapbox.common.TileRegionLoadProgress.toFLTTileRegionLoadProgress(): TileRegionLoadProgress {
+  return TileRegionLoadProgress(
+    this.completedResourceCount,
+    this.completedResourceSize,
+    this.erroredResourceCount,
+    this.requiredResourceCount,
+    this.loadedResourceCount,
+    this.loadedResourceSize
+  )
+}
+
+fun com.mapbox.common.TileRegionEstimateProgress.toFLTTileRegionEstimateProgress(): TileRegionEstimateProgress {
+  return TileRegionEstimateProgress(
+    this.requiredResourceCount, this.completedResourceCount, this.erroredResourceCount
+  )
+}
+
+fun Expected<String, None>.handleResult(callback: (Result<Unit>) -> Unit) {
+  if (this.isError) {
+    callback(Result.failure(Throwable(this.error)))
+  } else {
+    callback(Result.success(Unit))
+  }
+}
+
+@JvmName("toStylePackResult")
+fun <V : Any, NewValue> Expected<StylePackError, V>.toResult(valueTransform: (V) -> NewValue): Result<NewValue> {
+  return fold(
+    {
+      Result.failure(Throwable(it.message))
+    },
+    {
+      Result.success(valueTransform(it))
+    }
+  )
+}
+
+@JvmName("toTileRegionResult")
+fun <V : Any, NewValue> Expected<TileRegionError, V>.toResult(valueTransform: (V) -> NewValue): Result<NewValue> {
+  return fold(
+    {
+      Result.failure(Throwable(it.message))
+    },
+    {
+      Result.success(valueTransform(it))
+    }
+  )
+}
+
+fun Value.toFLTValue(): Any? {
+  return when (contents) {
+    is List<*> -> {
+      (contents as List<*>).map { (it as? Value)?.toFLTValue() ?: it }
+    }
+
+    is Map<*, *> -> {
+      (contents as Map<*, *>)
+        .mapKeys { (it.key as? Value)?.toFLTValue() ?: it.key }
+        .mapValues { (it.value as? Value)?.toFLTValue() ?: it.value }
+    }
+
+    else -> {
+      contents
+    }
+  }
+}
+
+fun Any.toValue(): Value {
+  return if (this is String) {
+    if (this.startsWith("{") || this.startsWith("[")) {
+      Value.fromJson(this).value!!
+    } else {
+      val number = this.toDoubleOrNull()
+      if (number != null) {
+        Value.valueOf(number)
+      } else {
+        Value.valueOf(this)
+      }
+    }
+  } else if (this is Double) {
+    Value.valueOf(this)
+  } else if (this is Long) {
+    Value.valueOf(this)
+  } else if (this is Int) {
+    Value.valueOf(this.toLong())
+  } else if (this is Boolean) {
+    Value.valueOf(this)
+  } else if (this is IntArray) {
+    val valueArray = this.map { Value(it.toLong()) }
+    Value(valueArray)
+  } else if (this is BooleanArray) {
+    val valueArray = this.map(::Value)
+    Value(valueArray)
+  } else if (this is DoubleArray) {
+    val valueArray = this.map(::Value)
+    Value(valueArray)
+  } else if (this is FloatArray) {
+    val valueArray = this.map { Value(it.toDouble()) }
+    Value(valueArray)
+  } else if (this is LongArray) {
+    val valueArray = this.map(::Value)
+    Value(valueArray)
+  } else if (this is Array<*>) {
+    val valueArray = this.map { it?.toValue() }
+    Value(valueArray)
+  } else if (this is List<*>) {
+    val valueArray = this.map { it?.toValue() }
+    Value(valueArray)
+  } else if (this is HashMap<*, *>) {
+    val valueMap = this
+      .mapKeys { it.key as? String }
+      .mapValues { it.value.toValue() }
+    Value.valueOf(kotlin.collections.HashMap(valueMap))
+  } else {
+    logE(
+      "StyleController",
+      "Can not map value, type is not supported: ${this::class.java.canonicalName}"
+    )
+    Value.valueOf("")
+  }
 }

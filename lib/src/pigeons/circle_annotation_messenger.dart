@@ -5,6 +5,7 @@
 part of mapbox_maps_flutter;
 
 /// Orientation of circle when map is pitched.
+/// Default value: "viewport".
 enum CirclePitchAlignment {
   /// The circle is aligned to the plane of the map.
   MAP,
@@ -14,6 +15,7 @@ enum CirclePitchAlignment {
 }
 
 /// Controls the scaling behavior of the circle when the map is pitched.
+/// Default value: "map".
 enum CirclePitchScale {
   /// Circles are scaled according to their apparent distance to the camera.
   MAP,
@@ -23,6 +25,7 @@ enum CirclePitchScale {
 }
 
 /// Controls the frame of reference for `circle-translate`.
+/// Default value: "map".
 enum CircleTranslateAnchor {
   /// The circle is translated relative to the map.
   MAP,
@@ -34,7 +37,7 @@ enum CircleTranslateAnchor {
 class CircleAnnotation {
   CircleAnnotation({
     required this.id,
-    this.geometry,
+    required this.geometry,
     this.circleSortKey,
     this.circleBlur,
     this.circleColor,
@@ -49,36 +52,43 @@ class CircleAnnotation {
   String id;
 
   /// The geometry that determines the location/shape of this annotation
-  Map<String?, Object?>? geometry;
+  Point geometry;
 
   /// Sorts features in ascending order based on this value. Features with a higher sort key will appear above features with a lower sort key.
   double? circleSortKey;
 
   /// Amount to blur the circle. 1 blurs the circle such that only the centerpoint is full opacity.
+  /// Default value: 0.
   double? circleBlur;
 
   /// The fill color of the circle.
+  /// Default value: "#000000".
   int? circleColor;
 
   /// The opacity at which the circle will be drawn.
+  /// Default value: 1. Value range: [0, 1]
   double? circleOpacity;
 
   /// Circle radius.
+  /// Default value: 5. Minimum value: 0.
   double? circleRadius;
 
   /// The stroke color of the circle.
+  /// Default value: "#000000".
   int? circleStrokeColor;
 
   /// The opacity of the circle's stroke.
+  /// Default value: 1. Value range: [0, 1]
   double? circleStrokeOpacity;
 
   /// The width of the circle's stroke. Strokes are placed outside of the `circle-radius`.
+  /// Default value: 0. Minimum value: 0.
   double? circleStrokeWidth;
 
   Object encode() {
     return <Object?>[
       id,
-      geometry,
+      geometry.encode(),
       circleSortKey,
       circleBlur,
       circleColor,
@@ -94,7 +104,7 @@ class CircleAnnotation {
     result as List<Object?>;
     return CircleAnnotation(
       id: result[0]! as String,
-      geometry: (result[1] as Map<Object?, Object?>?)?.cast<String?, Object?>(),
+      geometry: Point.decode(result[1]! as List<Object?>),
       circleSortKey: result[2] as double?,
       circleBlur: result[3] as double?,
       circleColor: result[4] as int?,
@@ -109,7 +119,7 @@ class CircleAnnotation {
 
 class CircleAnnotationOptions {
   CircleAnnotationOptions({
-    this.geometry,
+    required this.geometry,
     this.circleSortKey,
     this.circleBlur,
     this.circleColor,
@@ -121,35 +131,42 @@ class CircleAnnotationOptions {
   });
 
   /// The geometry that determines the location/shape of this annotation
-  Map<String?, Object?>? geometry;
+  Point geometry;
 
   /// Sorts features in ascending order based on this value. Features with a higher sort key will appear above features with a lower sort key.
   double? circleSortKey;
 
   /// Amount to blur the circle. 1 blurs the circle such that only the centerpoint is full opacity.
+  /// Default value: 0.
   double? circleBlur;
 
   /// The fill color of the circle.
+  /// Default value: "#000000".
   int? circleColor;
 
   /// The opacity at which the circle will be drawn.
+  /// Default value: 1. Value range: [0, 1]
   double? circleOpacity;
 
   /// Circle radius.
+  /// Default value: 5. Minimum value: 0.
   double? circleRadius;
 
   /// The stroke color of the circle.
+  /// Default value: "#000000".
   int? circleStrokeColor;
 
   /// The opacity of the circle's stroke.
+  /// Default value: 1. Value range: [0, 1]
   double? circleStrokeOpacity;
 
   /// The width of the circle's stroke. Strokes are placed outside of the `circle-radius`.
+  /// Default value: 0. Minimum value: 0.
   double? circleStrokeWidth;
 
   Object encode() {
     return <Object?>[
-      geometry,
+      geometry.encode(),
       circleSortKey,
       circleBlur,
       circleColor,
@@ -164,7 +181,7 @@ class CircleAnnotationOptions {
   static CircleAnnotationOptions decode(Object result) {
     result as List<Object?>;
     return CircleAnnotationOptions(
-      geometry: (result[0] as Map<Object?, Object?>?)?.cast<String?, Object?>(),
+      geometry: Point.decode(result[0]! as List<Object?>),
       circleSortKey: result[1] as double?,
       circleBlur: result[2] as double?,
       circleColor: result[3] as int?,
@@ -184,6 +201,9 @@ class _OnCircleAnnotationClickListenerCodec extends StandardMessageCodec {
     if (value is CircleAnnotation) {
       buffer.putUint8(128);
       writeValue(buffer, value.encode());
+    } else if (value is Point) {
+      buffer.putUint8(129);
+      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
@@ -194,6 +214,8 @@ class _OnCircleAnnotationClickListenerCodec extends StandardMessageCodec {
     switch (type) {
       case 128:
         return CircleAnnotation.decode(readValue(buffer)!);
+      case 129:
+        return Point.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -261,6 +283,9 @@ class __CircleAnnotationMessengerCodec extends StandardMessageCodec {
     } else if (value is CircleAnnotationOptions) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
+    } else if (value is Point) {
+      buffer.putUint8(132);
+      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
@@ -277,6 +302,8 @@ class __CircleAnnotationMessengerCodec extends StandardMessageCodec {
         return CircleAnnotationOptions.decode(readValue(buffer)!);
       case 131:
         return CircleAnnotationOptions.decode(readValue(buffer)!);
+      case 132:
+        return Point.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }

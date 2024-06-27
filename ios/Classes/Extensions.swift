@@ -1,5 +1,5 @@
 import Foundation
-import MapboxMaps
+@_spi(Experimental) import MapboxMaps
 import MapboxCoreMaps_Private
 import Flutter
 
@@ -8,6 +8,53 @@ let COORDINATES = "coordinates"
 extension FlutterError: Error { }
 
 // FLT to Mapbox
+
+extension GlyphsRasterizationMode {
+    func toGlyphsRasterizationMode() -> MapboxMaps.GlyphsRasterizationMode {
+        switch self {
+        case .nOGLYPHSRASTERIZEDLOCALLY: return .noGlyphsRasterizedLocally
+        case .iDEOGRAPHSRASTERIZEDLOCALLY: return .ideographsRasterizedLocally
+        case .aLLGLYPHSRASTERIZEDLOCALLY: return .allGlyphsRasterizedLocally
+        }
+    }
+}
+
+extension GlyphsRasterizationOptions {
+    func toGlyphsRasterizationOptions() -> MapboxMaps.GlyphsRasterizationOptions {
+        return MapboxMaps.GlyphsRasterizationOptions(
+            rasterizationMode: rasterizationMode.toGlyphsRasterizationMode(),
+            fontFamilies: fontFamily.map { [$0 ]} ?? []
+        )
+    }
+}
+
+extension MapSnapshotOptions {
+    func toMapSnapshotOptions() -> MapboxMaps.MapSnapshotOptions {
+        return MapboxMaps.MapSnapshotOptions(
+            size: size.toCGSize(),
+            pixelRatio: pixelRatio,
+            glyphsRasterizationOptions: glyphsRasterizationOptions?.toGlyphsRasterizationOptions() ?? .init(),
+            showsLogo: showsLogo ?? true,
+            showsAttribution: showsAttribution ?? true
+        )
+    }
+}
+
+extension TileCoverOptions {
+    func toTileCoverOptions() -> MapboxMaps.TileCoverOptions {
+        return MapboxMaps.TileCoverOptions(
+            tileSize: tileSize.map(UInt16.init),
+            minZoom: minZoom.map(UInt8.init),
+            maxZoom: maxZoom.map(UInt8.init),
+            roundZoom: roundZoom
+        )
+    }
+}
+extension Size {
+    func toCGSize() -> CGSize {
+        return CGSize(width: width, height: height)
+    }
+}
 
 extension ViewportMode {
     func toViewportMode() -> MapboxCoreMaps.ViewportMode {
@@ -175,6 +222,28 @@ extension MbxEdgeInsets {
 
 // Mapbox to FLT
 
+extension MapboxMaps.CanonicalTileID {
+    func toFLTCanonicalTileID() -> CanonicalTileID {
+        return CanonicalTileID(z: Int64(z), x: Int64(x), y: Int64(y))
+    }
+}
+
+extension MapboxMaps.CameraState {
+    func toFLTCameraState() -> CameraState {
+        return CameraState(
+            center: Point(center),
+            padding: MbxEdgeInsets(
+                top: padding.top,
+                left: padding.left,
+                bottom: padding.bottom,
+                right: padding.right
+            ),
+            zoom: zoom,
+            bearing: bearing,
+            pitch: pitch
+        )
+    }
+}
 extension MapboxMaps.LoggingLevel {
     func toFLTLoggingLevel() -> LoggingLevel {
         switch self {
@@ -269,6 +338,7 @@ extension CGSize {
         return Size(width: width, height: height)
     }
 }
+
 extension MapboxMaps.GlyphsRasterizationOptions {
     func toFLTGlyphsRasterizationOptions() -> GlyphsRasterizationOptions {
         let mode = GlyphsRasterizationMode(rawValue: rasterizationMode.rawValue)
@@ -714,5 +784,195 @@ extension Optional {
     static func ?= (lhs: inout Self, rhs: Self) {
         guard lhs == nil else { return }
         lhs = rhs
+    }
+}
+
+extension RawRepresentable {
+
+    init?<Other>(other: Other) where Other: RawRepresentable, Other.RawValue == RawValue {
+        self.init(rawValue: other.rawValue)
+    }
+}
+
+extension String {
+
+    init?(json: Any, encoding: String.Encoding = .utf8) {
+        do {
+            guard JSONSerialization.isValidJSONObject(json) else { return nil }
+            let data = try JSONSerialization.data(withJSONObject: json)
+            self.init(data: data, encoding: encoding)
+        } catch {
+            return nil
+        }
+    }
+}
+
+extension Array {
+
+    func compacted<T>() -> [T] where Element == T? {
+        compactMap { $0 }
+    }
+}
+
+extension Date {
+
+    var miliSecondsSince1970: TimeInterval {
+        timeIntervalSince1970 * 1000
+    }
+}
+
+// MARK: Offline
+
+extension MapboxCoreMaps.StylePackLoadOptions {
+
+    convenience init?(fltValue: StylePackLoadOptions) {
+        self.init(
+            glyphsRasterizationMode: fltValue.glyphsRasterizationMode?.toGlyphsRasterizationMode(),
+            metadata: fltValue.metadata,
+            acceptExpired: fltValue.acceptExpired
+        )
+    }
+
+    func toFLTStylePackLoadOptions() -> StylePackLoadOptions {
+        StylePackLoadOptions(
+            glyphsRasterizationMode: glyphsRasterizationMode.flatMap(GlyphsRasterizationMode.init(other:)),
+            metadata: metadata as? [String: Any],
+            acceptExpired: acceptExpired
+        )
+    }
+}
+
+extension MapboxCoreMaps.StylePack {
+
+    func toFLTStylePack() -> StylePack {
+        StylePack(
+            styleURI: styleURI,
+            glyphsRasterizationMode: GlyphsRasterizationMode(rawValue: glyphsRasterizationMode.rawValue)!,
+            requiredResourceCount: Int64(requiredResourceCount),
+            completedResourceCount: Int64(completedResourceCount),
+            completedResourceSize: Int64(completedResourceSize))
+    }
+}
+
+extension MapboxCoreMaps.StylePackLoadProgress {
+
+    func toFLTStylePackLoadProgress() -> StylePackLoadProgress {
+        StylePackLoadProgress(
+            completedResourceCount: Int64(completedResourceCount),
+            completedResourceSize: Int64(completedResourceSize),
+            erroredResourceCount: Int64(erroredResourceCount),
+            requiredResourceCount: Int64(requiredResourceCount),
+            loadedResourceCount: Int64(loadedResourceCount),
+            loadedResourceSize: Int64(loadedResourceSize))
+    }
+}
+
+extension MapboxCoreMaps.TilesetDescriptorOptions {
+
+    convenience init(fltValue: TilesetDescriptorOptions) {
+        if let pixelRatio = fltValue.pixelRatio {
+            self.init(
+                styleURI: fltValue.styleURI,
+                minZoom: UInt8(fltValue.minZoom),
+                maxZoom: UInt8(fltValue.maxZoom),
+                pixelRatio: Float(pixelRatio),
+                tilesets: fltValue.tilesets?.compacted(),
+                stylePack: fltValue.stylePackOptions.flatMap(MapboxCoreMaps.StylePackLoadOptions.init(fltValue:)),
+                extraOptions: fltValue.extraOptions)
+        } else {
+            self.init(
+                styleURI: fltValue.styleURI,
+                minZoom: UInt8(fltValue.minZoom),
+                maxZoom: UInt8(fltValue.maxZoom),
+                tilesets: fltValue.tilesets?.compacted(),
+                stylePack: fltValue.stylePackOptions.flatMap(MapboxCoreMaps.StylePackLoadOptions.init(fltValue:)),
+                extraOptions: fltValue.extraOptions)
+        }
+    }
+}
+
+extension MapboxCommon.TileRegion {
+
+    func toFLTTileRegion() -> TileRegion {
+        TileRegion(
+            id: id,
+            requiredResourceCount: Int64(requiredResourceCount),
+            completedResourceCount: Int64(completedResourceCount),
+            completedResourceSize: Int64(completedResourceSize),
+            expires: expires.map { Int64($0.miliSecondsSince1970) })
+    }
+}
+
+extension MapboxCommon.TileRegionEstimateOptions {
+
+    convenience init(fltValue: TileRegionEstimateOptions) {
+        self.init(
+            errorMargin: Float(fltValue.errorMargin),
+            preciseEstimationTimeout: fltValue.preciseEstimationTimeout,
+            timeout: fltValue.timeout,
+            extraOptions: fltValue.extraOptions)
+    }
+}
+
+extension MapboxCommon.TileRegionEstimateResult {
+
+    func toFLTTileRegionEstimateResult() -> TileRegionEstimateResult {
+        TileRegionEstimateResult(
+            errorMargin: errorMargin,
+            transferSize: Int64(transferSize),
+            storageSize: Int64(storageSize),
+            extraOptions: extraData as? [String: Any])
+    }
+}
+
+extension MapboxCommon.TileRegionLoadProgress {
+
+    func toFLTTileRegionLoadProgress() -> TileRegionLoadProgress {
+        TileRegionLoadProgress(
+            completedResourceCount: Int64(completedResourceCount),
+            completedResourceSize: Int64(completedResourceSize),
+            erroredResourceCount: Int64(erroredResourceCount),
+            requiredResourceCount: Int64(requiredResourceCount),
+            loadedResourceCount: Int64(loadedResourceCount),
+            loadedResourceSize: Int64(loadedResourceSize))
+    }
+}
+
+extension MapboxCommon.TileRegionEstimateProgress {
+
+    func toFLTTileRegionEstimateProgress() -> TileRegionEstimateProgress {
+        TileRegionEstimateProgress(
+            requiredResourceCount: Int64(requiredResourceCount),
+            completedResourceCount: Int64(completedResourceCount),
+            erroredResourceCount: Int64(erroredResourceCount))
+    }
+}
+// MARK: Result
+extension Result where Failure == any Error {
+    init(code: String, catchingFlutter body: () throws -> Success) {
+        self.init {
+            do {
+                return try body()
+            } catch {
+                throw FlutterError(code: code, message: error.localizedDescription, details: [NSUnderlyingErrorKey: error])
+            }
+        }
+    }
+}
+
+extension Result {
+
+    func mapElement<Element, NewElement>(
+        _ transform: (Element) -> NewElement
+    ) -> Result<[NewElement], Failure> where Success == [Element] {
+        return map { success in success.map(transform) }
+    }
+}
+
+func executeOnMainThread<T>(_ execute: @escaping (T) -> Void) -> (T) -> Void {
+    return { t in
+        DispatchQueue.main.async {
+            execute(t)
+        }
     }
 }

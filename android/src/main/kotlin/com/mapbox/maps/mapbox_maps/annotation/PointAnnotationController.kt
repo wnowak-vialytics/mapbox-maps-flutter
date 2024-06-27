@@ -4,8 +4,6 @@ package com.mapbox.maps.mapbox_maps.annotation
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.mapbox.maps.mapbox_maps.pigeons.*
-import com.mapbox.maps.mapbox_maps.toMap
-import com.mapbox.maps.mapbox_maps.toPoint
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
 import toFLTIconAnchor
 import toFLTIconPitchAlignment
@@ -147,7 +145,7 @@ class PointAnnotationController(private val delegate: ControllerDelegate) : _Poi
   private fun updateAnnotation(annotation: PointAnnotation): com.mapbox.maps.plugin.annotation.generated.PointAnnotation {
     val originalAnnotation = annotationMap[annotation.id]!!
     annotation.geometry?.let {
-      originalAnnotation.geometry = it.toPoint()
+      originalAnnotation.geometry = it
     }
     annotation.image?.let {
       originalAnnotation.iconImageBitmap = (BitmapFactory.decodeByteArray(it, 0, it.size))
@@ -735,6 +733,28 @@ class PointAnnotationController(private val delegate: ControllerDelegate) : _Poi
     }
   }
 
+  override fun setIconOcclusionOpacity(
+    managerId: String,
+    iconOcclusionOpacity: Double,
+    callback: (Result<Unit>) -> Unit
+  ) {
+    val manager = delegate.getManager(managerId) as PointAnnotationManager
+    manager.iconOcclusionOpacity = iconOcclusionOpacity
+    callback(Result.success(Unit))
+  }
+
+  override fun getIconOcclusionOpacity(
+    managerId: String,
+    callback: (Result<Double?>) -> Unit
+  ) {
+    val manager = delegate.getManager(managerId) as PointAnnotationManager
+    if (manager.iconOcclusionOpacity != null) {
+      callback(Result.success(manager.iconOcclusionOpacity!!))
+    } else {
+      callback(Result.success(null))
+    }
+  }
+
   override fun setIconTranslate(
     managerId: String,
     iconTranslate: List<Double?>,
@@ -774,6 +794,28 @@ class PointAnnotationController(private val delegate: ControllerDelegate) : _Poi
     val manager = delegate.getManager(managerId) as PointAnnotationManager
     if (manager.iconTranslateAnchor != null) {
       callback(Result.success(manager.iconTranslateAnchor!!.toFLTIconTranslateAnchor()))
+    } else {
+      callback(Result.success(null))
+    }
+  }
+
+  override fun setTextOcclusionOpacity(
+    managerId: String,
+    textOcclusionOpacity: Double,
+    callback: (Result<Unit>) -> Unit
+  ) {
+    val manager = delegate.getManager(managerId) as PointAnnotationManager
+    manager.textOcclusionOpacity = textOcclusionOpacity
+    callback(Result.success(Unit))
+  }
+
+  override fun getTextOcclusionOpacity(
+    managerId: String,
+    callback: (Result<Double?>) -> Unit
+  ) {
+    val manager = delegate.getManager(managerId) as PointAnnotationManager
+    if (manager.textOcclusionOpacity != null) {
+      callback(Result.success(manager.textOcclusionOpacity!!))
     } else {
       callback(Result.success(null))
     }
@@ -827,7 +869,7 @@ class PointAnnotationController(private val delegate: ControllerDelegate) : _Poi
 fun com.mapbox.maps.plugin.annotation.generated.PointAnnotation.toFLTPointAnnotation(): PointAnnotation {
   return PointAnnotation(
     id = id,
-    geometry = geometry.toMap(),
+    geometry = geometry,
     image = iconImageBitmap?.let {
       ByteArrayOutputStream().also { stream ->
         it.compress(Bitmap.CompressFormat.PNG, 100, stream)
@@ -875,7 +917,7 @@ fun com.mapbox.maps.plugin.annotation.generated.PointAnnotation.toFLTPointAnnota
 fun PointAnnotationOptions.toPointAnnotationOptions(): com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions {
   val options = com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions()
   this.geometry?.let {
-    options.withPoint(it.toPoint())
+    options.withPoint(it)
   }
   this.image?.let {
     options.withIconImage(BitmapFactory.decodeByteArray(it, 0, it.size))
