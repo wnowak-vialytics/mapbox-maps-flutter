@@ -27,6 +27,7 @@ import com.mapbox.maps.mapbox_maps.pigeons._CameraManager
 import com.mapbox.maps.mapbox_maps.pigeons._LocationComponentSettingsInterface
 import com.mapbox.maps.mapbox_maps.pigeons._MapInterface
 import com.mapbox.maps.pigeons.FLTHttpFactorySettings
+import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -73,6 +74,7 @@ class MapboxMapController(
   */
   private class LifecycleHelper(
     val parentLifecycle: Lifecycle,
+    val shouldDestroyOnDestroy: Boolean,
   ) : LifecycleOwner, DefaultLifecycleObserver {
 
     val lifecycleRegistry: LifecycleRegistry = LifecycleRegistry(this)
@@ -105,20 +107,22 @@ class MapboxMapController(
       lifecycleRegistry.currentState = Lifecycle.State.CREATED
     }
 
-    override fun onDestroy(owner: LifecycleOwner) {
-      lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
-    }
+    override fun onDestroy(owner: LifecycleOwner) = propagateDestroyEvent()
 
     fun dispose() {
       parentLifecycle.removeObserver(this)
-      // fires MapView.onStop
-      lifecycleRegistry.currentState = Lifecycle.State.CREATED
-      // fires MapView.onDestroy
-      lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+      propagateDestroyEvent()
+    }
+
+    private fun propagateDestroyEvent() {
+      lifecycleRegistry.currentState = when (shouldDestroyOnDestroy) {
+        true -> Lifecycle.State.DESTROYED
+        false -> Lifecycle.State.CREATED
+      }
     }
   }
 
-  private val lifecycleHelper: LifecycleHelper
+  private var lifecycleHelper: LifecycleHelper? = null
 
   init {
     val mapView = MapView(context, mapInitOptions)
@@ -141,9 +145,6 @@ class MapboxMapController(
     httpFactoryController = HttpFactoryController(pluginVersion)
 
     changeUserAgent(pluginVersion)
-
-    lifecycleHelper = LifecycleHelper(lifecycleProvider.getLifecycle()!!)
-    ViewTreeLifecycleOwner.set(mapView, lifecycleHelper)
 
     StyleManager.setUp(proxyBinaryMessenger, styleController)
     _CameraManager.setUp(proxyBinaryMessenger, cameraController)
@@ -170,11 +171,31 @@ class MapboxMapController(
     return mapView
   }
 
+  override fun onFlutterViewAttached(flutterView: View) {
+    super.onFlutterViewAttached(flutterView)
+    val context = flutterView.context
+    val shouldDestroyOnDestroy = when (context is FlutterActivity) {
+      true -> context.shouldDestroyEngineWithHost()
+      false -> true
+    }
+    lifecycleHelper = LifecycleHelper(lifecycleProvider.getLifecycle()!!, shouldDestroyOnDestroy)
+
+    mapView?.let { ViewTreeLifecycleOwner.set(it, lifecycleHelper) }
+  }
+
+  override fun onFlutterViewDetached() {
+    super.onFlutterViewDetached()
+    lifecycleHelper?.dispose()
+    lifecycleHelper = null
+    ViewTreeLifecycleOwner.set(mapView!!, null)
+  }
+
   override fun dispose() {
     if (mapView == null) {
       return
     }
-    lifecycleHelper.dispose()
+    lifecycleHelper?.dispose()
+    lifecycleHelper = null
     mapView = null
     mapboxMap = null
     methodChannel.setMethodCallHandler(null)
