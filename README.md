@@ -1,6 +1,6 @@
-# Mapbox Maps SDK Flutter Plugin
+# Mapbox Maps SDK Flutter SDK
 
-The Mapbox Maps SDK Flutter Plugin is an officially developed solution from Mapbox that enables use of our latest Maps SDK product (v10.13.0). It is currently in beta, but can be used in production. The plugin allows developers to embed highly customized maps using a Flutter widget on Android and iOS. 
+The Mapbox Maps SDK Flutter SDK is an officially developed solution from Mapbox that enables use of our latest Maps SDK product (v11.5.0). The SDK allows developers to embed highly customized maps using a Flutter widget on Android and iOS.
 
 Web and desktop are not supported. 
 
@@ -8,51 +8,52 @@ Contributions welcome!
 
 ## Supported API
 
-| Feature | Android | iOS |
-| ------ | ------ | ----- |
-| Style | :white_check_mark:   | :white_check_mark: |
-| Camera position | :white_check_mark:   | :white_check_mark: |
-| Camera animations | :white_check_mark:   | :white_check_mark: |
-| Events | :white_check_mark:   | :white_check_mark: |
-| Gestures | :white_check_mark:   | :white_check_mark: |
+| Feature | Android            | iOS |
+| ------ |--------------------| -- |
+| Style | :white_check_mark: | :white_check_mark: |
+| Camera position | :white_check_mark: | :white_check_mark: |
+| Camera animations | :white_check_mark: | :white_check_mark: |
+| Events | :white_check_mark: | :white_check_mark: |
+| Gestures | :white_check_mark: | :white_check_mark: |
 | User Location | :white_check_mark: | :white_check_mark: |
-| Circle Layer | :white_check_mark:   | :white_check_mark: |
-| Fill Layer | :white_check_mark:   | :white_check_mark: |
-| Fill extrusion Layer | :white_check_mark:   | :white_check_mark: |
-| Line Layer | :white_check_mark:   | :white_check_mark: |
-| Circle Layer | :white_check_mark:   | :white_check_mark: |
-| Raster Layer  | :white_check_mark:  | :white_check_mark:  |
-| Symbol Layer | :white_check_mark:   | :white_check_mark: |
-| Hillshade Layer | :white_check_mark:   | :white_check_mark: |
-| Heatmap Layer   | :white_check_mark:  | :white_check_mark:  |
-| Sky Layer | :white_check_mark:   | :white_check_mark: |
-| GeoJson Source  | :white_check_mark:   | :white_check_mark: |
-| Image Source   | :white_check_mark:   | :white_check_mark: |
-| Vector Source   |  :white_check_mark:  | :white_check_mark:  |
-| Raster Source  |  :white_check_mark:  | :white_check_mark:  |
-| Rasterdem Source  |  :white_check_mark:  | :white_check_mark:  |
-| Circle Annotations | :white_check_mark:   | :white_check_mark: |
-| Point Annotations | :white_check_mark:   | :white_check_mark: |
-| Line Annotations | :white_check_mark:   | :white_check_mark: |
-| Fill Annotations | :white_check_mark:   | :white_check_mark: |
-| Offline | :x: | :x: |
-| Viewport | :x: | :x: |
-| Style DSL   | :x:  | :x:  |
-| Expression DSL   | :x:  | :x:  |
-| View Annotations   | :x:  | :x:  |
+| Circle Layer | :white_check_mark: | :white_check_mark: |
+| Fill Layer | :white_check_mark: | :white_check_mark: |
+| Fill extrusion Layer | :white_check_mark: | :white_check_mark: |
+| Line Layer | :white_check_mark: | :white_check_mark: |
+| Circle Layer | :white_check_mark: | :white_check_mark: |
+| Raster Layer  | :white_check_mark: | :white_check_mark: |
+| Symbol Layer | :white_check_mark: | :white_check_mark: |
+| Hillshade Layer | :white_check_mark: | :white_check_mark: |
+| Heatmap Layer   | :white_check_mark: | :white_check_mark: |
+| Sky Layer | :white_check_mark: | :white_check_mark: |
+| GeoJson Source  | :white_check_mark: | :white_check_mark: |
+| Image Source   | :white_check_mark: | :white_check_mark: |
+| Vector Source   | :white_check_mark: | :white_check_mark: |
+| Raster Source  | :white_check_mark: | :white_check_mark: |
+| Rasterdem Source  | :white_check_mark: | :white_check_mark: |
+| Circle Annotations | :white_check_mark: | :white_check_mark: |
+| Point Annotations | :white_check_mark: | :white_check_mark: |
+| Line Annotations | :white_check_mark: | :white_check_mark: |
+| Fill Annotations | :white_check_mark: | :white_check_mark: |
+| Snapshotter | :white_check_mark: | :white_check_mark: |
+| Offline | :white_check_mark: | :white_check_mark: |
+| Viewport | :x:                | :x: |
+| Style DSL   | :x:                | :x: |
+| Expression DSL   | :x:                | :x: |
+| View Annotations   | :x:                | :x: |
 
 ## Requirements
 
-The Maps Flutter Plugin is compatible with applications:
+The Maps Flutter SDK is compatible with applications:
 
-- Deployed on iOS 11 or higher
+- Deployed on iOS 12 or higher
 - Built using the Android SDK 21 or higher
-- Built using the Dart SDK 2.17.1 or higher
+- Built using the Dart SDK 3.0.0 or higher
 
 ## Installation
 
 ### Configure credentials
-To run the Maps Flutter Plugin you will need to configure the Mapbox Access Tokens. 
+To run the Maps Flutter SDK you will need to configure the Mapbox Access Tokens. 
 Read more about access tokens and public/secret scopes at the platform [Android](https://docs.mapbox.com/android/maps/guides/install/#configure-credentials) or [iOS](https://docs.mapbox.com/ios/maps/guides/install/#configure-credentials) docs.
 
 #### Secret token
@@ -69,11 +70,9 @@ To access platform SDKs you will need to create a secret access token with the `
 ```
 
 #### Public token
-To instantiate the `MapWidget` widget pass the public access token with `ResourceOptions`:
+You can set the access token for Mapbox Maps Flutter SDK(as well as for every Mapbox SDK) via `MapboxOptions`:
 ```
-  MapWidget(
-    resourceOptions:
-        ResourceOptions(accessToken: PUBLIC_ACCESS_TOKEN))));
+  MapboxOptions.setAccessToken(ACCESS_TOKEN);
 ```
 
 It's a good practice to retrieve access tokens from some external source.
@@ -104,19 +103,19 @@ You can also persist token in launch.json :
 
 Then to retrieve the token from the environment in the application :
 ```
-String ACCESS_TOKEN = String.fromEnvironment("PUBLIC_ACCESS_TOKEN");
+String ACCESS_TOKEN = String.fromEnvironment("ACCESS_TOKEN");
 ```
 
 ### Add the dependency
-To use the Maps Flutter Plugin add the git dependency to the pubspec.yaml:
+To use the Maps Flutter SDK add the git dependency to the pubspec.yaml:
 
 ```
 dependencies:
-  mapbox_maps_flutter: ^0.5.1
+  mapbox_maps_flutter: ^2.1.0
 ```
 
 ### Configure permissions
-You will need to grant location permission in order to use the location component of the Maps Flutter Plugin.
+You will need to grant location permission in order to use the location component of the Maps Flutter SDK.
 
 You can use an existing library to request location permission, e.g. with [permission_handler](https://pub.dev/packages/permission_handler) `await Permission.locationWhenInUse.request();` will trigger permission request. 
 
@@ -144,24 +143,22 @@ import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 void main() {
-  runApp(MaterialApp(
-      home: MapWidget(
-          resourceOptions: ResourceOptions(accessToken: YOUR_ACCESS_TOKEN))));
+  runApp(MaterialApp(home: MapWidget()));
 }
 ```
 
 #### MapWidget widget
-The `MapWidget` widget provides options to customize the map - you can set `ResourceOptions`, `MapOptions`, `CameraOptions`, `styleURL`.
+The `MapWidget` widget provides options to customize the map - you can set `MapOptions`, `CameraOptions`, `styleURL` etc.
 
 It also allows or add listeners for various events - related to style loading, map rendering, map loading. 
 
 #### MapboxMap controller
 The `MapboxMap` controller instance is provided with `MapWidget.onMapCreated` callback.
 
-`MapboxMap` exposes an entry point to the most of the APIs Maps Flutter Plugin provides. It allows to control the map, camera, styles, observe map events, 
+`MapboxMap` exposes an entry point to the most of the APIs Maps Flutter SDK provides. It allows to control the map, camera, styles, observe map events, 
 query rendered features, etc.
 
-It's organized similarly to the [Android](https://docs.mapbox.com/android/maps/api/10.8.0/mapbox-maps-android/com.mapbox.maps/-mapbox-map/) and [iOS](https://docs.mapbox.com/ios/maps/api/10.8.1/Classes/MapboxMap.html) counterparts.
+It's organized similarly to the [Android](https://docs.mapbox.com/android/maps/api/11.5.0/mapbox-maps-android/com.mapbox.maps/-mapbox-map/) and [iOS](https://docs.mapbox.com/ios/maps/api/11.5.0/documentation/mapboxmaps/mapboxmap) counterparts.
 
 To interact with the map after it's created store the MapboxMap object somewhere : 
 ```
@@ -184,7 +181,6 @@ class FullMapState extends State<FullMap> {
     return new Scaffold(
         body: MapWidget(
       key: ValueKey("mapWidget"),
-      resourceOptions: ResourceOptions(accessToken: ACCESS_TOKEN),
       onMapCreated: _onMapCreated,
     ));
   }
@@ -241,7 +237,7 @@ You can find more examples of the AnnotationManagers usage in the sample app : [
 ## Map styles
 Platform docs : [Android](https://docs.mapbox.com/android/maps/guides/styles/), [iOS](https://docs.mapbox.com/ios/maps/guides/styles/).
 
-The Mapbox Maps Flutter Plugin allows full customization of the look of the map used in your application. 
+The Mapbox Maps Flutter SDK allows full customization of the look of the map used in your application. 
 
 ### Set a style
 You can specify the initial style uri at `MapWidget.styleUri`, or load it at runtime using `MapboxMap.loadStyleURI` / `MapboxMap.loadStyleJson` : 
@@ -280,7 +276,7 @@ To apply an expression to interpolate gradient color to a line layer:
 
 ## Camera and animations
 Platform docs : [Android](https://docs.mapbox.com/android/maps/guides/camera-and-animation/), [iOS](https://docs.mapbox.com/ios/maps/guides/camera-and-animation/). 
-The camera is the user's viewpoint above the map. The Maps Flutter Plugin provides you with options to set and adjust the camera position, listen for camera changes, get the camera position, and restrict the camera position to set bounds.
+The camera is the user's viewpoint above the map. The Maps Flutter SDK provides you with options to set and adjust the camera position, listen for camera changes, get the camera position, and restrict the camera position to set bounds.
 
 ### Camera position
 You can set the starting camera position using `MapWidget.cameraOptions` :
@@ -288,7 +284,6 @@ You can set the starting camera position using `MapWidget.cameraOptions` :
 ```
 MapWidget(
   key: ValueKey("mapWidget"),
-  resourceOptions: ResourceOptions(accessToken: ACCESS_TOKEN),
   cameraOptions: CameraOptions(
       center: Point(coordinates: Position(-80.1263, 25.7845)).toJson(),
       zoom: 12.0),

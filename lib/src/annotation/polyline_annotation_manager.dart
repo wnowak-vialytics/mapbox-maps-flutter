@@ -7,87 +7,108 @@ class PolylineAnnotationManager extends BaseAnnotationManager {
       {required String id, required BinaryMessenger messenger})
       : super(id: id, messenger: messenger);
 
-  late _PolylineAnnotationMessager messager =
-      _PolylineAnnotationMessager(binaryMessenger: _messenger);
+  late _PolylineAnnotationMessenger messenger =
+      _PolylineAnnotationMessenger(binaryMessenger: _messenger);
 
   /// Add a listener to receive the callback when an annotation is clicked.
   void addOnPolylineAnnotationClickListener(
       OnPolylineAnnotationClickListener listener) {
-    OnPolylineAnnotationClickListener.setup(listener,
+    OnPolylineAnnotationClickListener.setUp(listener,
         binaryMessenger: _messenger);
   }
 
   /// Create a new annotation with the option.
   Future<PolylineAnnotation> create(PolylineAnnotationOptions annotation) =>
-      messager.create(id, annotation);
+      messenger.create(id, annotation);
 
   /// Create multi annotations with the options.
   Future<List<PolylineAnnotation?>> createMulti(
           List<PolylineAnnotationOptions> annotations) =>
-      messager.createMulti(id, annotations);
+      messenger.createMulti(id, annotations);
 
   /// Update an added annotation with new properties.
   Future<void> update(PolylineAnnotation annotation) =>
-      messager.update(id, annotation);
+      messenger.update(id, annotation);
 
   /// Delete an added annotation.
   Future<void> delete(PolylineAnnotation annotation) =>
-      messager.delete(id, annotation);
+      messenger.delete(id, annotation);
 
   /// Delete all the annotation added by this manager.
-  Future<void> deleteAll() => messager.deleteAll(id);
+  Future<void> deleteAll() => messenger.deleteAll(id);
 
-  /// The display of line endings.
-  Future<void> setLineCap(LineCap lineCap) => messager.setLineCap(id, lineCap);
+  /// The display of line endings. Default value: "butt".
+  Future<void> setLineCap(LineCap lineCap) => messenger.setLineCap(id, lineCap);
 
-  /// The display of line endings.
-  Future<LineCap?> getLineCap() => messager
-      .getLineCap(id)
-      .then((value) => value != null ? LineCap.values[value] : null);
+  /// The display of line endings. Default value: "butt".
+  Future<LineCap?> getLineCap() => messenger.getLineCap(id);
 
-  /// Used to automatically convert miter joins to bevel joins for sharp angles.
+  /// Used to automatically convert miter joins to bevel joins for sharp angles. Default value: 2.
   Future<void> setLineMiterLimit(double lineMiterLimit) =>
-      messager.setLineMiterLimit(id, lineMiterLimit);
+      messenger.setLineMiterLimit(id, lineMiterLimit);
 
-  /// Used to automatically convert miter joins to bevel joins for sharp angles.
-  Future<double?> getLineMiterLimit() => messager.getLineMiterLimit(id);
+  /// Used to automatically convert miter joins to bevel joins for sharp angles. Default value: 2.
+  Future<double?> getLineMiterLimit() => messenger.getLineMiterLimit(id);
 
-  /// Used to automatically convert round joins to miter joins for shallow angles.
+  /// Used to automatically convert round joins to miter joins for shallow angles. Default value: 1.05.
   Future<void> setLineRoundLimit(double lineRoundLimit) =>
-      messager.setLineRoundLimit(id, lineRoundLimit);
+      messenger.setLineRoundLimit(id, lineRoundLimit);
 
-  /// Used to automatically convert round joins to miter joins for shallow angles.
-  Future<double?> getLineRoundLimit() => messager.getLineRoundLimit(id);
+  /// Used to automatically convert round joins to miter joins for shallow angles. Default value: 1.05.
+  Future<double?> getLineRoundLimit() => messenger.getLineRoundLimit(id);
 
-  /// Specifies the lengths of the alternating dashes and gaps that form the dash pattern. The lengths are later scaled by the line width. To convert a dash length to pixels, multiply the length by the current line width. Note that GeoJSON sources with `lineMetrics: true` specified won't render dashed lines to the expected scale. Also note that zoom-dependent expressions will be evaluated only at integer zoom levels.
+  /// Specifies the lengths of the alternating dashes and gaps that form the dash pattern. The lengths are later scaled by the line width. To convert a dash length to pixels, multiply the length by the current line width. Note that GeoJSON sources with `lineMetrics: true` specified won't render dashed lines to the expected scale. Also note that zoom-dependent expressions will be evaluated only at integer zoom levels. Minimum value: 0.
   Future<void> setLineDasharray(List<double?> lineDasharray) =>
-      messager.setLineDasharray(id, lineDasharray);
+      messenger.setLineDasharray(id, lineDasharray);
 
-  /// Specifies the lengths of the alternating dashes and gaps that form the dash pattern. The lengths are later scaled by the line width. To convert a dash length to pixels, multiply the length by the current line width. Note that GeoJSON sources with `lineMetrics: true` specified won't render dashed lines to the expected scale. Also note that zoom-dependent expressions will be evaluated only at integer zoom levels.
-  Future<List<double?>?> getLineDasharray() => messager.getLineDasharray(id);
+  /// Specifies the lengths of the alternating dashes and gaps that form the dash pattern. The lengths are later scaled by the line width. To convert a dash length to pixels, multiply the length by the current line width. Note that GeoJSON sources with `lineMetrics: true` specified won't render dashed lines to the expected scale. Also note that zoom-dependent expressions will be evaluated only at integer zoom levels. Minimum value: 0.
+  Future<List<double?>?> getLineDasharray() => messenger.getLineDasharray(id);
 
-  /// The geometry's offset. Values are [x, y] where negatives indicate left and up, respectively.
+  /// Decrease line layer opacity based on occlusion from 3D objects. Value 0 disables occlusion, value 1 means fully occluded. Default value: 1. Value range: [0, 1]
+  Future<void> setLineDepthOcclusionFactor(double lineDepthOcclusionFactor) =>
+      messenger.setLineDepthOcclusionFactor(id, lineDepthOcclusionFactor);
+
+  /// Decrease line layer opacity based on occlusion from 3D objects. Value 0 disables occlusion, value 1 means fully occluded. Default value: 1. Value range: [0, 1]
+  Future<double?> getLineDepthOcclusionFactor() =>
+      messenger.getLineDepthOcclusionFactor(id);
+
+  /// Controls the intensity of light emitted on the source features. Default value: 0. Minimum value: 0.
+  Future<void> setLineEmissiveStrength(double lineEmissiveStrength) =>
+      messenger.setLineEmissiveStrength(id, lineEmissiveStrength);
+
+  /// Controls the intensity of light emitted on the source features. Default value: 0. Minimum value: 0.
+  Future<double?> getLineEmissiveStrength() =>
+      messenger.getLineEmissiveStrength(id);
+
+  /// Opacity multiplier (multiplies line-opacity value) of the line part that is occluded by 3D objects. Value 0 hides occluded part, value 1 means the same opacity as non-occluded part. The property is not supported when `line-opacity` has data-driven styling. Default value: 0. Value range: [0, 1]
+  Future<void> setLineOcclusionOpacity(double lineOcclusionOpacity) =>
+      messenger.setLineOcclusionOpacity(id, lineOcclusionOpacity);
+
+  /// Opacity multiplier (multiplies line-opacity value) of the line part that is occluded by 3D objects. Value 0 hides occluded part, value 1 means the same opacity as non-occluded part. The property is not supported when `line-opacity` has data-driven styling. Default value: 0. Value range: [0, 1]
+  Future<double?> getLineOcclusionOpacity() =>
+      messenger.getLineOcclusionOpacity(id);
+
+  /// The geometry's offset. Values are [x, y] where negatives indicate left and up, respectively. Default value: [0,0].
   Future<void> setLineTranslate(List<double?> lineTranslate) =>
-      messager.setLineTranslate(id, lineTranslate);
+      messenger.setLineTranslate(id, lineTranslate);
 
-  /// The geometry's offset. Values are [x, y] where negatives indicate left and up, respectively.
-  Future<List<double?>?> getLineTranslate() => messager.getLineTranslate(id);
+  /// The geometry's offset. Values are [x, y] where negatives indicate left and up, respectively. Default value: [0,0].
+  Future<List<double?>?> getLineTranslate() => messenger.getLineTranslate(id);
 
-  /// Controls the frame of reference for `line-translate`.
+  /// Controls the frame of reference for `line-translate`. Default value: "map".
   Future<void> setLineTranslateAnchor(
           LineTranslateAnchor lineTranslateAnchor) =>
-      messager.setLineTranslateAnchor(id, lineTranslateAnchor);
+      messenger.setLineTranslateAnchor(id, lineTranslateAnchor);
 
-  /// Controls the frame of reference for `line-translate`.
+  /// Controls the frame of reference for `line-translate`. Default value: "map".
   Future<LineTranslateAnchor?> getLineTranslateAnchor() =>
-      messager.getLineTranslateAnchor(id).then(
-          (value) => value != null ? LineTranslateAnchor.values[value] : null);
+      messenger.getLineTranslateAnchor(id);
 
-  /// The line trim-off percentage range based on the whole line gradinet range [0.0, 1.0]. The line part between [trim-start, trim-end] will be marked as transparent to make a route vanishing effect. If either 'trim-start' or 'trim-end' offset is out of valid range, the default range will be set.
+  /// The line part between [trim-start, trim-end] will be marked as transparent to make a route vanishing effect. The line trim-off offset is based on the whole line range [0.0, 1.0]. Default value: [0,0]. Minimum value: [0,0]. Maximum value: [1,1].
   Future<void> setLineTrimOffset(List<double?> lineTrimOffset) =>
-      messager.setLineTrimOffset(id, lineTrimOffset);
+      messenger.setLineTrimOffset(id, lineTrimOffset);
 
-  /// The line trim-off percentage range based on the whole line gradinet range [0.0, 1.0]. The line part between [trim-start, trim-end] will be marked as transparent to make a route vanishing effect. If either 'trim-start' or 'trim-end' offset is out of valid range, the default range will be set.
-  Future<List<double?>?> getLineTrimOffset() => messager.getLineTrimOffset(id);
+  /// The line part between [trim-start, trim-end] will be marked as transparent to make a route vanishing effect. The line trim-off offset is based on the whole line range [0.0, 1.0]. Default value: [0,0]. Minimum value: [0,0]. Maximum value: [1,1].
+  Future<List<double?>?> getLineTrimOffset() => messenger.getLineTrimOffset(id);
 }
 // End of generated file.

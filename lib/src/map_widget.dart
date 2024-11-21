@@ -1,5 +1,35 @@
 part of mapbox_maps_flutter;
 
+final _SuffixesRegistry _suffixesRegistry = _SuffixesRegistry._instance();
+
+/// A mode for platform MapView to be hosted in Flutter on Android platform.
+///
+/// As per https://github.com/flutter/flutter/wiki/Android-Platform-Views#selecting-a-mode
+@experimental
+enum AndroidPlatformViewHostingMode {
+  /// Texture Layer Hybrid Composition with fallback to Virtual Display,
+  /// when the current SDK version is <23 or [MapWidget.textureView] is `false`.
+  ///
+  /// https://github.com/flutter/flutter/wiki/Texture-Layer-Hybrid-Composition
+  TLHC_VD,
+
+  /// Use Texture Layer Hybrid Composition hosting mode with fallback to Hybrid Composition,
+  /// when the current SDK version is <23 or [MapWidget.textureView] is `false`.
+  ///
+  /// https://github.com/flutter/flutter/wiki/Texture-Layer-Hybrid-Composition
+  TLHC_HC,
+
+  /// Always use Hybrid Composition hosting mode.
+  ///
+  /// https://github.com/flutter/flutter/wiki/Hybrid-Composition
+  HC,
+
+  /// Always use Virtual Display hosting mode.
+  ///
+  /// https://github.com/flutter/flutter/wiki/Virtual-Display
+  VD,
+}
+
 /// A MapWidget provides an embeddable map interface.
 /// You use this class to display map information and to manipulate the map contents from your application.
 /// You can center the map on a given coordinate, specify the size of the area you want to display,
@@ -13,13 +43,13 @@ part of mapbox_maps_flutter;
 class MapWidget extends StatefulWidget {
   MapWidget({
     Key? key,
-    required this.resourceOptions,
     this.mapOptions,
     this.cameraOptions,
     // FIXME Flutter 3.x has memory leak on Android using in SurfaceView mode, see https://github.com/flutter/flutter/issues/118384
     // As a workaround default is true.
     this.textureView = true,
-    this.styleUri = MapboxStyles.MAPBOX_STREETS,
+    this.androidHostingMode = AndroidPlatformViewHostingMode.HC,
+    this.styleUri = MapboxStyles.STANDARD,
     this.gestureRecognizers,
     this.onMapCreated,
     this.onStyleLoadedListener,
@@ -35,53 +65,11 @@ class MapWidget extends StatefulWidget {
     this.onStyleDataLoadedListener,
     this.onStyleImageMissingListener,
     this.onStyleImageUnusedListener,
+    this.onResourceRequestListener,
     this.onTapListener,
     this.onLongTapListener,
     this.onScrollListener,
-  }) : super(key: key) {
-    if (onStyleLoadedListener != null) {
-      _eventTypes.add(MapEvents.STYLE_LOADED);
-    }
-    if (onCameraChangeListener != null) {
-      _eventTypes.add(MapEvents.CAMERA_CHANGED);
-    }
-    if (onMapIdleListener != null) {
-      _eventTypes.add(MapEvents.MAP_IDLE);
-    }
-    if (onMapLoadedListener != null) {
-      _eventTypes.add(MapEvents.MAP_LOADED);
-    }
-    if (onMapLoadErrorListener != null) {
-      _eventTypes.add(MapEvents.MAP_LOADING_ERROR);
-    }
-    if (onRenderFrameFinishedListener != null) {
-      _eventTypes.add(MapEvents.RENDER_FRAME_FINISHED);
-    }
-    if (onRenderFrameStartedListener != null) {
-      _eventTypes.add(MapEvents.RENDER_FRAME_STARTED);
-    }
-    if (onSourceAddedListener != null) {
-      _eventTypes.add(MapEvents.SOURCE_ADDED);
-    }
-    if (onSourceDataLoadedListener != null) {
-      _eventTypes.add(MapEvents.SOURCE_DATA_LOADED);
-    }
-    if (onSourceRemovedListener != null) {
-      _eventTypes.add(MapEvents.SOURCE_REMOVED);
-    }
-    if (onStyleDataLoadedListener != null) {
-      _eventTypes.add(MapEvents.STYLE_DATA_LOADED);
-    }
-    if (onStyleImageMissingListener != null) {
-      _eventTypes.add(MapEvents.STYLE_IMAGE_MISSING);
-    }
-    if (onStyleImageUnusedListener != null) {
-      _eventTypes.add(MapEvents.STYLE_IMAGE_REMOVE_UNUSED);
-    }
-  }
-
-  /// Resource options when using a MapWidget. Access token required when using a Mapbox service. Please see [https://www.mapbox.com/help/create-api-access-token/](https://www.mapbox.com/help/create-api-access-token/) to learn how to create one.More information in this guide [https://www.mapbox.com/help/first-steps-android-sdk/#access-tokens](https://www.mapbox.com/help/first-steps-android-sdk/#access-tokens).
-  final ResourceOptions resourceOptions;
+  }) : super(key: key) {}
 
   /// Describes the map options value when using a MapWidget.
   final MapOptions? mapOptions;
@@ -94,6 +82,11 @@ class MapWidget extends StatefulWidget {
   /// FIXME Flutter 3.x has memory leak on Android using in SurfaceView mode, see https://github.com/flutter/flutter/issues/118384
   /// As a workaround default is true.
   final bool? textureView;
+
+  /// Controls the way the underlaying MapView is being hosted by Flutter on Android.
+  /// This setting has no effect on iOS.
+  @experimental
+  final AndroidPlatformViewHostingMode androidHostingMode;
 
   /// The styleUri will applied for the MapWidget in the onStart lifecycle event if no style is set. Default is [Style.MAPBOX_STREETS].
   final String styleUri;
@@ -146,6 +139,9 @@ class MapWidget extends StatefulWidget {
   /// Invoked whenever an image added to the Style is no longer needed and can be removed using StyleManager#removeStyleImage method.
   final OnStyleImageUnusedListener? onStyleImageUnusedListener;
 
+  /// Invoked when map makes a request to load required resources.
+  final OnResourceRequestListener? onResourceRequestListener;
+
   /// Which gestures should be consumed by the map.
   ///
   /// It is possible for other gesture recognizers to be competing with the map on pointer
@@ -158,7 +154,6 @@ class MapWidget extends StatefulWidget {
   final Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers;
 
   final _mapWidgetState = _MapWidgetState();
-  final _eventTypes = [];
 
   final OnMapTapListener? onTapListener;
   final OnMapLongTapListener? onLongTapListener;
@@ -173,69 +168,81 @@ class MapWidget extends StatefulWidget {
 }
 
 class _MapWidgetState extends State<MapWidget> {
-  final Completer<MapboxMap> _controller = Completer<MapboxMap>();
-
-  final _MapboxMapsPlatform _mapboxMapsPlatform = _MapboxMapsPlatform();
+  late final _MapboxMapsPlatform _mapboxMapsPlatform =
+      _MapboxMapsPlatform(binaryMessenger: _binaryMessenger);
+  final int _suffix = _suffixesRegistry.getSuffix();
+  late final BinaryMessenger _binaryMessenger =
+      ProxyBinaryMessenger(suffix: _suffix.toString());
+  late final _MapEvents _events;
 
   MapboxMap? mapboxMap;
 
   @override
   Widget build(BuildContext context) {
     final Map<String, dynamic> creationParams = <String, dynamic>{
-      'resourceOptions': widget.resourceOptions.encode(),
       'mapOptions': widget.mapOptions?.encode(),
       'cameraOptions': widget.cameraOptions?.encode(),
       'textureView': widget.textureView,
       'styleUri': widget.styleUri,
-      'eventTypes': widget._eventTypes,
-      'mapboxPluginVersion': '0.5.1'
+      'channelSuffix': _suffix,
+      'mapboxPluginVersion': '2.1.0',
+      'eventTypes': _events.eventTypes.map((e) => e.index).toList(),
     };
 
-    return _mapboxMapsPlatform.buildView(
+    return _mapboxMapsPlatform.buildView(widget.androidHostingMode,
         creationParams, onPlatformViewCreated, widget.gestureRecognizers);
   }
 
   @override
   void initState() {
     super.initState();
+
+    _events = _MapEvents(binaryMessenger: _binaryMessenger);
+    _updateEventListeners();
   }
 
   @override
-  void dispose() async {
+  void dispose() {
+    mapboxMap?.dispose();
+    _suffixesRegistry.releaseSuffix(_suffix);
+    _events.dispose();
+
     super.dispose();
-    if (_controller.isCompleted) {
-      final controller = await _controller.future;
-      controller.dispose();
-    }
   }
 
   @override
   void didUpdateWidget(MapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    _updateEventListeners();
+    _events.updateSubscriptions();
   }
 
-  void onPlatformViewCreated(int id) {
-    _mapboxMapsPlatform.initPlatform();
+  void _updateEventListeners() {
+    _events._onStyleLoadedListener = widget.onStyleLoadedListener;
+    _events._onCameraChangeListener = widget.onCameraChangeListener;
+    _events._onMapIdleListener = widget.onMapIdleListener;
+    _events._onMapLoadedListener = widget.onMapLoadedListener;
+    _events._onMapLoadErrorListener = widget.onMapLoadErrorListener;
+    _events._onRenderFrameFinishedListener =
+        widget.onRenderFrameFinishedListener;
+    _events._onRenderFrameStartedListener = widget.onRenderFrameStartedListener;
+    _events._onSourceAddedListener = widget.onSourceAddedListener;
+    _events._onSourceDataLoadedListener = widget.onSourceDataLoadedListener;
+    _events._onSourceRemovedListener = widget.onSourceRemovedListener;
+    _events._onStyleDataLoadedListener = widget.onStyleDataLoadedListener;
+    _events._onStyleImageMissingListener = widget.onStyleImageMissingListener;
+    _events._onStyleImageUnusedListener = widget.onStyleImageUnusedListener;
+    _events._onResourceRequestListener = widget.onResourceRequestListener;
+  }
+
+  Future<void> onPlatformViewCreated(int id) async {
     final MapboxMap controller = MapboxMap(
       mapboxMapsPlatform: _mapboxMapsPlatform,
-      onStyleLoadedListener: widget.onStyleLoadedListener,
-      onCameraChangeListener: widget.onCameraChangeListener,
-      onMapIdleListener: widget.onMapIdleListener,
-      onMapLoadedListener: widget.onMapLoadedListener,
-      onMapLoadErrorListener: widget.onMapLoadErrorListener,
-      onRenderFrameFinishedListener: widget.onRenderFrameFinishedListener,
-      onRenderFrameStartedListener: widget.onRenderFrameStartedListener,
-      onSourceAddedListener: widget.onSourceAddedListener,
-      onSourceDataLoadedListener: widget.onSourceDataLoadedListener,
-      onSourceRemovedListener: widget.onSourceRemovedListener,
-      onStyleDataLoadedListener: widget.onStyleDataLoadedListener,
-      onStyleImageMissingListener: widget.onStyleImageMissingListener,
-      onStyleImageUnusedListener: widget.onStyleImageUnusedListener,
       onMapTapListener: widget.onTapListener,
       onMapLongTapListener: widget.onLongTapListener,
       onMapScrollListener: widget.onScrollListener,
     );
-    _controller.complete(controller);
     if (widget.onMapCreated != null) {
       widget.onMapCreated!(controller);
     }

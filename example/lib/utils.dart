@@ -6,8 +6,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'package:turf/helpers.dart';
 import 'package:turf/polyline.dart';
+
+extension City on Point {
+  static var helsinki = Point(coordinates: Position(24.945831, 60.192059));
+}
 
 Point createRandomPoint() {
   return Point(coordinates: createRandomPosition());
@@ -69,7 +72,7 @@ Position createRandomPositionAround(Position myPosition) {
 extension AnnotationCreation on PointAnnotationManager {
   addAnnotation(Uint8List imageData, Point position, {String textField = ""}) {
     return create(PointAnnotationOptions(
-        geometry: position.toJson(),
+        geometry: position,
         textField: textField,
         textOffset: [0.0, -2.0],
         textColor: Colors.red.value,
@@ -81,7 +84,7 @@ extension AnnotationCreation on PointAnnotationManager {
 }
 
 extension PuckPosition on StyleManager {
-  Future<Position> getPuckPosition() async {
+  Future<Position?> getPuckPosition() async {
     Layer? layer;
     if (Platform.isAndroid) {
       layer = await getLayer("mapbox-location-indicator-layer");
@@ -89,14 +92,17 @@ extension PuckPosition on StyleManager {
       layer = await getLayer("puck");
     }
     final location = (layer as LocationIndicatorLayer).location;
-    return Future.value(Position(location![1]!, location[0]!));
+    if (location == null) {
+      return null;
+    }
+    return Future.value(Position(location[1]!, location[0]!));
   }
 }
 
 extension PolylineCreation on PolylineAnnotationManager {
   addAnnotation(List<Position> coordinates) {
     return PolylineAnnotationOptions(
-        geometry: LineString(coordinates: coordinates).toJson(),
+        geometry: LineString(coordinates: coordinates),
         lineColor: Colors.red.value,
         lineWidth: 2);
   }

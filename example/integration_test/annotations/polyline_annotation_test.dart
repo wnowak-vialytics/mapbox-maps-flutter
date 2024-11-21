@@ -8,10 +8,6 @@ import 'package:mapbox_maps_example/empty_map_widget.dart' as app;
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<void> addDelay(int ms) async {
-    await Future<void>.delayed(Duration(milliseconds: ms));
-  }
-
   testWidgets('create PolylineAnnotation', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
@@ -22,10 +18,13 @@ void main() {
         LineString(coordinates: [Position(1.0, 2.0), Position(10.0, 20.0)]);
 
     var polylineAnnotationOptions = PolylineAnnotationOptions(
-      geometry: geometry.toJson(),
+      geometry: geometry,
       lineJoin: LineJoin.BEVEL,
       lineSortKey: 1.0,
+      lineZOffset: 1.0,
       lineBlur: 1.0,
+      lineBorderColor: Colors.red.value,
+      lineBorderWidth: 1.0,
       lineColor: Colors.red.value,
       lineGapWidth: 1.0,
       lineOffset: 1.0,
@@ -34,7 +33,7 @@ void main() {
       lineWidth: 1.0,
     );
     final annotation = await manager.create(polylineAnnotationOptions);
-    var lineString = LineString.fromJson((annotation.geometry)!.cast());
+    var lineString = annotation.geometry;
     var points = lineString.coordinates;
     expect(2, points.length);
     expect(1.0, points.first.lng);
@@ -43,7 +42,10 @@ void main() {
     expect(20.0, points.last.lat);
     expect(LineJoin.BEVEL, annotation.lineJoin);
     expect(1.0, annotation.lineSortKey);
+    expect(1.0, annotation.lineZOffset);
     expect(1.0, annotation.lineBlur);
+    expect(Colors.red.value, annotation.lineBorderColor);
+    expect(1.0, annotation.lineBorderWidth);
     expect(Colors.red.value, annotation.lineColor);
     expect(1.0, annotation.lineGapWidth);
     expect(1.0, annotation.lineOffset);
@@ -63,15 +65,15 @@ void main() {
         LineString(coordinates: [Position(1.0, 2.0), Position(10.0, 20.0)]);
 
     var polylineAnnotationOptions = PolylineAnnotationOptions(
-      geometry: geometry.toJson(),
+      geometry: geometry,
     );
     final annotation = await manager.create(polylineAnnotationOptions);
-    var lineString = LineString.fromJson((annotation.geometry)!.cast());
+    var lineString = annotation.geometry;
     var newlineString = LineString(
         coordinates: lineString.coordinates
             .map((e) => Position(e.lng + 1.0, e.lat + 1.0))
             .toList());
-    annotation.geometry = newlineString.toJson();
+    annotation.geometry = newlineString;
     await manager.update(annotation);
     await manager.delete(annotation);
 
@@ -80,7 +82,6 @@ void main() {
     }
 
     await manager.deleteAll();
-    await addDelay(1000);
   });
 }
 // End of generated file.

@@ -10,10 +10,6 @@ import 'package:mapbox_maps_example/empty_map_widget.dart' as app;
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<void> addDelay(int ms) async {
-    await Future<void>.delayed(Duration(milliseconds: ms));
-  }
-
   testWidgets('loadStyleURI', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
@@ -21,7 +17,6 @@ void main() {
     await mapboxMap.loadStyleURI(MapboxStyles.DARK);
     var style = await mapboxMap.style.getStyleURI();
     expect(MapboxStyles.DARK, style);
-    await addDelay(1000);
   });
 
   testWidgets('loadStyleJson', (WidgetTester tester) async {
@@ -29,10 +24,70 @@ void main() {
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
     var styleJson = await rootBundle.loadString('assets/style.json');
+    app.events.resetOnStyleLoaded();
     mapboxMap.loadStyleJson(styleJson);
+
+    await app.events.onStyleLoaded.future;
+
     var getStyleJson = await mapboxMap.style.getStyleJSON();
     expect(styleJson, getStyleJson);
-    await addDelay(1000);
+  });
+
+  testWidgets('loadRasterArray', (WidgetTester tester) async {
+    final mapFuture = app.main();
+    await tester.pumpAndSettle();
+    final mapboxMap = await mapFuture;
+    var styleJson =
+        await rootBundle.loadString('assets/raster_array_layers.json');
+    var expectedValue = [
+      RasterDataLayer("temperature", [
+        "1659898800",
+        "1659902400",
+        "1659906000",
+        "1659909600",
+        "1659913200",
+        "1659916800"
+      ]),
+      RasterDataLayer("humidity", [
+        "1659898800",
+        "1659902400",
+        "1659906000",
+        "1659909600",
+        "1659913200",
+        "1659916800"
+      ])
+    ];
+    app.events.resetOnStyleLoaded();
+    mapboxMap.loadStyleJson(styleJson);
+
+    await app.events.onStyleLoaded.future;
+
+    var getStyleJson = await mapboxMap.style.getStyleJSON();
+    expect(styleJson, getStyleJson);
+
+    // Test getStyleSourceProperty method
+    var rasterLayers =
+        await mapboxMap.style.getStyleSourceProperty("mapbox", "rasterLayers");
+    final Map<Object?, Object?> dataMap =
+        rasterLayers.value as Map<Object?, Object?>;
+    List<RasterDataLayer> rasterDataLayers = [];
+
+    dataMap.forEach((key, value) {
+      rasterDataLayers
+          .add(RasterDataLayer(key as String, (value as List).cast<String>()));
+    });
+    expect(rasterDataLayers.contains(expectedValue.first), true);
+    expect(rasterDataLayers.contains(expectedValue.last), true);
+
+    // Test getting the value from the source directly
+    var source = await mapboxMap.style.getSource("mapbox");
+    if (source is RasterArraySource) {
+      var layers = await source.rasterLayers;
+      expect(layers?.contains(expectedValue.first), true);
+      expect(layers?.contains(expectedValue.last), true);
+    } else {
+      fail("Expected source to be RasterArraySource");
+    }
   });
 
   testWidgets('clearData', (WidgetTester tester) async {
@@ -40,45 +95,47 @@ void main() {
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
     mapboxMap.clearData();
-    await addDelay(1000);
   });
 
-  testWidgets('setMemoryBudget', (WidgetTester tester) async {
+  testWidgets('setTileCacheBudget', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
-    mapboxMap.setMemoryBudget(MapMemoryBudgetInMegabytes(size: 100), null);
-    mapboxMap.setMemoryBudget(null, MapMemoryBudgetInTiles(size: 100));
-    await addDelay(1000);
+    mapboxMap.setTileCacheBudget(TileCacheBudgetInMegabytes(size: 100), null);
+    mapboxMap.setTileCacheBudget(null, TileCacheBudgetInTiles(size: 100));
   });
 
-  if (Platform.isAndroid) {
-    testWidgets('getSize', (WidgetTester tester) async {
-      final mapFuture = app.main();
-      await tester.pumpAndSettle();
-      final mapboxMap = await mapFuture;
+  testWidgets('getSize', (WidgetTester tester) async {
+    final mapFuture = app.main();
+    await tester.pumpAndSettle();
+    final mapboxMap = await mapFuture;
+
+    await app.events.onMapLoaded.future;
+
+    if (Platform.isIOS) {
+      final throwsPlatformException = throwsA(predicate(
+          (p) => p is PlatformException && p.message == 'Not available.'));
+      expect(() async => await mapboxMap.getSize(), throwsPlatformException);
+    } else {
       var size = await mapboxMap.getSize();
-      expect(size.width, tester.binding.renderView.size.width);
-      expect(size.height, tester.binding.renderView.size.height);
-      await addDelay(1000);
-    });
+      expect(size.width, closeTo(tester.binding.renderView.size.width, 1));
+      expect(size.height, closeTo(tester.binding.renderView.size.height, 1));
+    }
+  });
 
-    testWidgets('reduceMemoryUse', (WidgetTester tester) async {
-      final mapFuture = app.main();
-      await tester.pumpAndSettle();
-      final mapboxMap = await mapFuture;
+  testWidgets('reduceMemoryUse', (WidgetTester tester) async {
+    final mapFuture = app.main();
+    await tester.pumpAndSettle();
+    final mapboxMap = await mapFuture;
 
-      await mapboxMap.reduceMemoryUse();
-      await addDelay(1000);
-    });
-  }
+    await mapboxMap.reduceMemoryUse();
+  });
 
   testWidgets('triggerRepaint', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
     await mapboxMap.triggerRepaint();
-    await addDelay(1000);
   });
 
   testWidgets('PrefetchZoomDelta', (WidgetTester tester) async {
@@ -88,7 +145,6 @@ void main() {
     await mapboxMap.setPrefetchZoomDelta(10);
     var prefetchZoomDelta = await mapboxMap.getPrefetchZoomDelta();
     expect(prefetchZoomDelta, 10);
-    await addDelay(1000);
   });
 
   testWidgets('MapOptions', (WidgetTester tester) async {
@@ -96,63 +152,47 @@ void main() {
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
     var options = await mapboxMap.getMapOptions();
-    if (Platform.isAndroid) {
-      expect(options.orientation, NorthOrientation.UPWARDS);
-      expect(options.constrainMode, ConstrainMode.HEIGHT_ONLY);
-      expect(options.contextMode, isNull);
-      expect(options.viewportMode, ViewportMode.DEFAULT);
-    }
+    expect(options.orientation, NorthOrientation.UPWARDS);
+    expect(options.constrainMode, ConstrainMode.HEIGHT_ONLY);
+    expect(options.contextMode, isNull);
+    expect(options.viewportMode, ViewportMode.DEFAULT);
+
     expect(options.crossSourceCollisions, true);
-    expect(options.optimizeForTerrain, true);
     expect(options.pixelRatio, tester.binding.window.devicePixelRatio);
     expect(options.glyphsRasterizationOptions, isNull);
     expect(options.size!.width, isNotNull);
     expect(options.size!.height, isNotNull);
-    if (Platform.isAndroid) {
-      await mapboxMap.setConstrainMode(ConstrainMode.WIDTH_AND_HEIGHT);
-      await mapboxMap.setNorthOrientation(NorthOrientation.DOWNWARDS);
-      await mapboxMap.setViewportMode(ViewportMode.FLIPPED_Y);
 
-      options = await mapboxMap.getMapOptions();
-      expect(options.orientation, NorthOrientation.DOWNWARDS);
-      expect(options.constrainMode, ConstrainMode.WIDTH_AND_HEIGHT);
-      expect(options.viewportMode, ViewportMode.FLIPPED_Y);
-    }
-    await addDelay(1000);
+    await mapboxMap.setConstrainMode(ConstrainMode.WIDTH_AND_HEIGHT);
+    await mapboxMap.setNorthOrientation(NorthOrientation.DOWNWARDS);
+    await mapboxMap.setViewportMode(ViewportMode.FLIPPED_Y);
+
+    options = await mapboxMap.getMapOptions();
+    expect(options.orientation, NorthOrientation.DOWNWARDS);
+    expect(options.constrainMode, ConstrainMode.WIDTH_AND_HEIGHT);
+    expect(options.viewportMode, ViewportMode.FLIPPED_Y);
   });
 
   testWidgets('isGestureInProgress', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
-    if (Platform.isAndroid) {
-      var isGestureInProgress = await mapboxMap.isGestureInProgress();
-      expect(isGestureInProgress, false);
-    }
+
+    expect(await mapboxMap.isGestureInProgress(), false);
+
     await mapboxMap.setGestureInProgress(true);
-    if (Platform.isAndroid) {
-      var isGestureInProgress = await mapboxMap.isGestureInProgress();
-      expect(isGestureInProgress, true);
-    }
-    await addDelay(1000);
+    expect(await mapboxMap.isGestureInProgress(), true);
   });
 
   testWidgets('isUserAnimationInProgress', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
-    if (Platform.isAndroid) {
-      var isUserAnimationInProgress =
-          await mapboxMap.isUserAnimationInProgress();
-      expect(isUserAnimationInProgress, false);
-    }
+
+    expect(await mapboxMap.isUserAnimationInProgress(), false);
+
     await mapboxMap.setUserAnimationInProgress(true);
-    if (Platform.isAndroid) {
-      var isUserAnimationInProgress =
-          await mapboxMap.isUserAnimationInProgress();
-      expect(isUserAnimationInProgress, true);
-    }
-    await addDelay(1000);
+    expect(await mapboxMap.isUserAnimationInProgress(), true);
   });
 
   testWidgets('debugOptions', (WidgetTester tester) async {
@@ -164,7 +204,6 @@ void main() {
     var debugOptions = await mapboxMap.getDebug();
     expect(debugOptions.length, 1);
     expect(debugOptions.first!.data, MapDebugOptionsData.TILE_BORDERS);
-    await addDelay(1000);
   });
 
   testWidgets('featureState', (WidgetTester tester) async {
@@ -174,9 +213,14 @@ void main() {
     var style = mapboxMap.style;
     var source = await rootBundle.loadString('assets/source.json');
     var layer = await rootBundle.loadString('assets/point_layer.json');
+
+    app.events.resetOnStyleDataLoaded();
+    app.events.resetOnMapIdle();
     style.addStyleSource('source', source);
     style.addStyleLayer(layer, null);
-    await addDelay(1000);
+
+    await app.events.onSourceDataLoaded.future;
+    await app.events.onMapIdle.future;
 
     await mapboxMap.setFeatureState(
         'source', 'custom', 'point', json.encode({'choose': true}));
@@ -190,18 +234,65 @@ void main() {
     featureState = await mapboxMap.getFeatureState('source', 'custom', 'point');
     stateMap = json.decode(featureState);
     expect(stateMap.length, 0);
-    await addDelay(1000);
   });
 
-  testWidgets('getResourceOptions', (WidgetTester tester) async {
-    final mapFuture = app.main();
+  testWidgets('MapboxMapsOptions default values', (WidgetTester tester) async {
+    final _ = app.main();
     await tester.pumpAndSettle();
-    final mapboxMap = await mapFuture;
 
-    var options = await mapboxMap.getResourceOptions();
-    expect(options.accessToken, isNotNull);
-    expect(options.baseURL, 'https://api.mapbox.com');
-    await addDelay(1000);
+    expect(await MapboxOptions.getAccessToken(), isNotNull);
+    expect(await MapboxMapsOptions.getBaseUrl(), 'https://api.mapbox.com');
+    expect(await MapboxMapsOptions.getDataPath(), isNotNull);
+    expect(await MapboxMapsOptions.getAssetPath(), isNotNull);
+    expect(await MapboxMapsOptions.getTileStoreUsageMode(),
+        TileStoreUsageMode.READ_ONLY);
+  });
+
+  testWidgets('MapboxMapsOptions read and update', (WidgetTester tester) async {
+    final _ = app.main();
+    await tester.pumpAndSettle();
+
+    final originalBaseURL = await MapboxMapsOptions.getBaseUrl();
+    final originalDataPath = await MapboxMapsOptions.getDataPath();
+    final originalAssetPath = await MapboxMapsOptions.getAssetPath();
+    final originalTileStoreUsageMode =
+        await MapboxMapsOptions.getTileStoreUsageMode();
+
+    // given
+    final token = 'test token';
+    final baseUrl = 'https://test.mapbox.com/maps-flutter-test';
+    final dataPath = 'data/path';
+    final assetPath = 'asset/path';
+    final tileStoreUsageMode = TileStoreUsageMode.DISABLED;
+    final language = "ua";
+    final worldview = "MA";
+
+    // when
+    MapboxOptions.setAccessToken(token);
+    MapboxMapsOptions.setBaseUrl(baseUrl);
+    MapboxMapsOptions.setDataPath(dataPath);
+    MapboxMapsOptions.setAssetPath(assetPath);
+    MapboxMapsOptions.setTileStoreUsageMode(tileStoreUsageMode);
+    MapboxMapsOptions.setLanguage(language);
+    MapboxMapsOptions.setWorldview(worldview);
+
+    // then
+    expect(await MapboxOptions.getAccessToken(), token);
+    expect(await MapboxMapsOptions.getBaseUrl(), baseUrl);
+    expect(await MapboxMapsOptions.getDataPath(), endsWith(dataPath));
+    expect(await MapboxMapsOptions.getAssetPath(),
+        Platform.isAndroid ? "" : endsWith(assetPath));
+    expect(await MapboxMapsOptions.getTileStoreUsageMode(), tileStoreUsageMode);
+    expect(await MapboxMapsOptions.getLanguage(), language);
+    expect(await MapboxMapsOptions.getWorldview(), worldview);
+
+    // restore original values
+    MapboxMapsOptions.setBaseUrl(originalBaseURL);
+    MapboxMapsOptions.setDataPath(originalDataPath);
+    MapboxMapsOptions.setAssetPath(originalAssetPath);
+    MapboxMapsOptions.setTileStoreUsageMode(originalTileStoreUsageMode);
+    MapboxMapsOptions.setLanguage(null);
+    MapboxMapsOptions.setWorldview(null);
   });
 
   testWidgets('queryRenderedFeatures', (WidgetTester tester) async {
@@ -209,6 +300,13 @@ void main() {
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
     var style = mapboxMap.style;
+    var options = CameraOptions(
+        center: Point(coordinates: Position(-77.032667, 38.913175)), zoom: 10);
+
+    app.events.resetOnCameraChanged();
+    mapboxMap.setCamera(options);
+    await app.events.onCameraChanged.future;
+
     var source = await rootBundle.loadString('assets/source.json');
     var layer = await rootBundle.loadString('assets/point_layer.json');
     final ByteData bytes =
@@ -216,9 +314,13 @@ void main() {
     final Uint8List list = bytes.buffer.asUint8List();
     await style.addStyleImage('icon', 1.0,
         MbxImage(width: 40, height: 40, data: list), true, [], [], null);
+
+    app.events.resetOnSourceDataLoaded();
+    app.events.resetOnMapIdle();
     style.addStyleSource('source', source);
     style.addStyleLayer(layer, null);
-    await addDelay(1000);
+    await app.events.onSourceDataLoaded.future;
+    await app.events.onMapIdle.future;
 
     var screenBox = ScreenBox(
         min: ScreenCoordinate(x: 0.0, y: 0.0),
@@ -227,9 +329,9 @@ void main() {
         value: json.encode(screenBox.encode()), type: Type.SCREEN_BOX);
     var query = await mapboxMap.queryRenderedFeatures(renderedQueryGeometry,
         RenderedQueryOptions(layerIds: ['points'], filter: null));
-    expect(query.length, 1);
-    expect(query[0]!.source, 'source');
-    expect(query[0]!.feature['id'], 'point');
+    expect(query.length, greaterThan(0));
+    expect(query[0]!.queriedFeature.source, 'source');
+    expect(query[0]!.queriedFeature.feature['id'], 'point');
 
     query = await mapboxMap.queryRenderedFeatures(
         RenderedQueryGeometry(
@@ -246,7 +348,6 @@ void main() {
             type: Type.LIST),
         RenderedQueryOptions(layerIds: ['points'], filter: null));
     expect(query.length, 0);
-    await addDelay(1000);
   });
 
   testWidgets('querySourceFeatures', (WidgetTester tester) async {
@@ -254,16 +355,32 @@ void main() {
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
     var style = mapboxMap.style;
+    var options = CameraOptions(
+        center: Point(coordinates: Position(-77.032667, 38.913175)),
+        zoom: 10,
+        pitch: 0);
+
+    await app.events.onMapLoaded.future;
+
+    app.events.resetOnCameraChanged();
+    mapboxMap.setCamera(options);
+    await app.events.onCameraChanged.future;
+
     var source = await rootBundle.loadString('assets/source.json');
     var layer = await rootBundle.loadString('assets/point_layer.json');
+
+    app.events.resetOnSourceDataLoaded();
+    app.events.resetOnMapIdle();
     style.addStyleSource('source', source);
     style.addStyleLayer(layer, null);
-    await addDelay(1000);
+    await app.events.onSourceDataLoaded.future;
+    await app.events.onMapIdle.future;
+
     var query = await mapboxMap.querySourceFeatures(
         'source', SourceQueryOptions(filter: ''));
-    expect(query.length, 1);
-    expect(query[0]!.source, 'source');
-    expect(query[0]!.feature['id'], 'point');
+    expect(query.length, greaterThan(0));
+    expect(query[0]!.queriedFeature.source, 'source');
+    expect(query[0]!.queriedFeature.feature['id'], 'point');
   });
 
   testWidgets('queryFeatureExtensions', (WidgetTester tester) async {
@@ -273,19 +390,22 @@ void main() {
     var style = mapboxMap.style;
     var source =
         await rootBundle.loadString('assets/cluster/cluster_source.json');
-    style.addStyleSource("earthquakes", source);
     var layer =
         await rootBundle.loadString('assets/cluster/cluster_layer.json');
-    style.addStyleLayer(layer, null);
-
     var clusterCountLayer =
         await rootBundle.loadString('assets/cluster/cluster_count_layer.json');
-    style.addStyleLayer(clusterCountLayer, null);
-
     var unclusteredLayer = await rootBundle
         .loadString('assets/cluster/unclustered_point_layer.json');
+
+    app.events.resetOnSourceDataLoaded();
+    app.events.resetOnMapIdle();
+    style.addStyleSource("earthquakes", source);
+    style.addStyleLayer(layer, null);
+    style.addStyleLayer(clusterCountLayer, null);
     style.addStyleLayer(unclusteredLayer, null);
-    await addDelay(5000);
+    await app.events.onSourceDataLoaded.future;
+    await app.events.onMapIdle.future;
+
     var feature = {
       "id": 1249,
       "properties": {
@@ -312,5 +432,15 @@ void main() {
     var clusterExpansionZoom =
         await mapboxMap.getGeoJsonClusterExpansionZoom('earthquakes', feature);
     expect(clusterExpansionZoom.value, '1');
+  });
+
+  testWidgets('snapshot', (WidgetTester tester) async {
+    final mapFuture = app.main();
+    await tester.pumpAndSettle();
+    final mapboxMap = await mapFuture;
+    await mapboxMap.loadStyleURI(MapboxStyles.DARK);
+    await app.events.onMapIdle.future;
+    final snapshot = await mapboxMap.snapshot();
+    expect(snapshot, isNotNull);
   });
 }

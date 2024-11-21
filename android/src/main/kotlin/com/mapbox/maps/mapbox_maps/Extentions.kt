@@ -1,17 +1,198 @@
 package com.mapbox.maps.mapbox_maps
 
 import android.content.Context
+import android.graphics.Bitmap
 import com.google.gson.Gson
+import com.mapbox.bindgen.Expected
+import com.mapbox.bindgen.None
+import com.mapbox.bindgen.Value
+import com.mapbox.common.TileRegionError
 import com.mapbox.geojson.*
-import com.mapbox.maps.*
-import com.mapbox.maps.pigeons.FLTMapInterfaces
-import com.mapbox.maps.plugin.animation.MapAnimationOptions
+import com.mapbox.maps.EdgeInsets
+import com.mapbox.maps.StylePackError
+import com.mapbox.maps.extension.style.expressions.dsl.generated.min
+import com.mapbox.maps.extension.style.layers.properties.generated.ProjectionName
+import com.mapbox.maps.extension.style.light.LightPosition
+import com.mapbox.maps.extension.style.light.generated.ambientLight
+import com.mapbox.maps.extension.style.light.generated.directionalLight
+import com.mapbox.maps.extension.style.light.generated.flatLight
+import com.mapbox.maps.extension.style.projection.generated.Projection
+import com.mapbox.maps.extension.style.types.StyleTransition
+import com.mapbox.maps.logE
+import com.mapbox.maps.mapbox_maps.pigeons.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 
 // FLT to Android
-fun FLTMapInterfaces.MapAnimationOptions.toMapAnimationOptions(): MapAnimationOptions {
-  val builder = MapAnimationOptions.Builder()
+
+fun GlyphsRasterizationMode.toGlyphsRasterizationMode(): com.mapbox.maps.GlyphsRasterizationMode {
+  return when (this) {
+    GlyphsRasterizationMode.NO_GLYPHS_RASTERIZED_LOCALLY -> com.mapbox.maps.GlyphsRasterizationMode.NO_GLYPHS_RASTERIZED_LOCALLY
+    GlyphsRasterizationMode.ALL_GLYPHS_RASTERIZED_LOCALLY -> com.mapbox.maps.GlyphsRasterizationMode.ALL_GLYPHS_RASTERIZED_LOCALLY
+    GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY -> com.mapbox.maps.GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY
+  }
+}
+
+fun com.mapbox.maps.GlyphsRasterizationMode.toFLTGlyphsRasterizationMode(): GlyphsRasterizationMode {
+  return when (this) {
+    com.mapbox.maps.GlyphsRasterizationMode.NO_GLYPHS_RASTERIZED_LOCALLY -> GlyphsRasterizationMode.NO_GLYPHS_RASTERIZED_LOCALLY
+    com.mapbox.maps.GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY -> GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY
+    com.mapbox.maps.GlyphsRasterizationMode.ALL_GLYPHS_RASTERIZED_LOCALLY -> GlyphsRasterizationMode.ALL_GLYPHS_RASTERIZED_LOCALLY
+  }
+}
+fun GlyphsRasterizationOptions.toGlyphsRasterizationOptions(): com.mapbox.maps.GlyphsRasterizationOptions {
+  return com.mapbox.maps.GlyphsRasterizationOptions.Builder()
+    .rasterizationMode(rasterizationMode.toGlyphsRasterizationMode())
+    .fontFamily(fontFamily)
+    .build()
+}
+fun MapSnapshotOptions.toSnapshotOptions(context: Context): com.mapbox.maps.MapSnapshotOptions {
+  return com.mapbox.maps.MapSnapshotOptions.Builder()
+    .size(size.toSize(context))
+    .pixelRatio(pixelRatio.toFloat())
+    .glyphsRasterizationOptions(glyphsRasterizationOptions?.toGlyphsRasterizationOptions())
+    .build()
+}
+
+fun MapSnapshotOptions.toSnapshotOverlayOptions(): com.mapbox.maps.SnapshotOverlayOptions {
+  return com.mapbox.maps.SnapshotOverlayOptions(
+    showLogo = showsLogo ?: true,
+    showAttributes = showsAttribution ?: true
+  )
+}
+fun Size.toSize(context: Context): com.mapbox.maps.Size {
+  return com.mapbox.maps.Size(width.toDevicePixels(context), height.toDevicePixels(context))
+}
+fun TileCoverOptions.toTileCoverOptions(): com.mapbox.maps.TileCoverOptions {
+  return com.mapbox.maps.TileCoverOptions.Builder()
+    .tileSize(tileSize?.toShort())
+    .maxZoom(maxZoom?.toByte())
+    .minZoom(minZoom?.toByte())
+    .roundZoom(roundZoom)
+    .build()
+}
+fun ModelScaleMode.toModelScaleMode(): com.mapbox.maps.plugin.ModelScaleMode {
+  return when (this) {
+    ModelScaleMode.VIEWPORT -> com.mapbox.maps.plugin.ModelScaleMode.VIEWPORT
+    ModelScaleMode.MAP -> com.mapbox.maps.plugin.ModelScaleMode.MAP
+  }
+}
+
+fun TileStoreUsageMode.toTileStoreUsageMode(): com.mapbox.maps.TileStoreUsageMode {
+  return when (this) {
+    TileStoreUsageMode.DISABLED -> com.mapbox.maps.TileStoreUsageMode.DISABLED
+    TileStoreUsageMode.READ_AND_UPDATE -> com.mapbox.maps.TileStoreUsageMode.READ_AND_UPDATE
+    TileStoreUsageMode.READ_ONLY -> com.mapbox.maps.TileStoreUsageMode.READ_ONLY
+  }
+}
+
+fun StyleProjectionName.toProjectionName(): ProjectionName {
+  return when (this) {
+    StyleProjectionName.GLOBE -> ProjectionName.GLOBE
+    StyleProjectionName.MERCATOR -> ProjectionName.MERCATOR
+  }
+}
+
+fun StyleProjection.toProjection(): com.mapbox.maps.extension.style.projection.generated.Projection {
+  return com.mapbox.maps.extension.style.projection.generated.Projection(name.toProjectionName())
+}
+fun TransitionOptions.toStyleTransition(): StyleTransition {
+  val builder = StyleTransition.Builder()
+  duration?.let {
+    builder.duration(it)
+  }
+  delay?.let {
+    builder.delay(it)
+  }
+
+  return builder.build()
+}
+fun Anchor.toAnchor(): com.mapbox.maps.extension.style.layers.properties.generated.Anchor {
+  return when (this) {
+    Anchor.MAP -> com.mapbox.maps.extension.style.layers.properties.generated.Anchor.MAP
+    Anchor.VIEWPORT -> com.mapbox.maps.extension.style.layers.properties.generated.Anchor.VIEWPORT
+  }
+}
+fun FlatLight.toFlatLight(): com.mapbox.maps.extension.style.light.generated.FlatLight {
+  return flatLight(id) {
+    anchor?.let {
+      anchor(it.toAnchor())
+    }
+    color?.let {
+      color(it.toInt())
+    }
+    colorTransition?.let {
+      colorTransition(it.toStyleTransition())
+    }
+    intensity?.let {
+      intensity(it)
+    }
+    intensityTransition?.let {
+      intensityTransition(it.toStyleTransition())
+    }
+    position?.let {
+      if (it.size == 3) {
+        position(LightPosition(it[0]!!, it[1]!!, it[2]!!))
+      }
+    }
+    positionTransition?.let {
+      positionTransition(it.toStyleTransition())
+    }
+  }
+}
+
+fun AmbientLight.toAmbientLight(): com.mapbox.maps.extension.style.light.generated.AmbientLight {
+  return ambientLight(id) {
+    color?.let {
+      color(it.toInt())
+    }
+    colorTransition?.let {
+      colorTransition(it.toStyleTransition())
+    }
+    intensity?.let {
+      intensity(it)
+    }
+    intensityTransition?.let {
+      intensityTransition(it.toStyleTransition())
+    }
+  }
+}
+
+fun DirectionalLight.toDirectionalLight(): com.mapbox.maps.extension.style.light.generated.DirectionalLight {
+  return directionalLight(id) {
+    castShadows?.let {
+      castShadows(it)
+    }
+    color?.let {
+      color(it.toInt())
+    }
+    colorTransition?.let {
+      colorTransition(it.toStyleTransition())
+    }
+    direction?.let {
+      direction(it as List<Double>)
+    }
+    directionTransition?.let {
+      directionTransition(it.toStyleTransition())
+    }
+    intensity?.let {
+      intensity(it)
+    }
+    intensityTransition?.let {
+      intensityTransition(it.toStyleTransition())
+    }
+    shadowIntensity?.let {
+      shadowIntensity(it)
+    }
+    shadowIntensityTransition?.let {
+      shadowIntensityTransition(it.toStyleTransition())
+    }
+  }
+}
+
+fun MapAnimationOptions.toMapAnimationOptions(): com.mapbox.maps.plugin.animation.MapAnimationOptions {
+  val builder = com.mapbox.maps.plugin.animation.MapAnimationOptions.Builder()
   duration?.let {
     builder.duration(it)
   }
@@ -21,57 +202,57 @@ fun FLTMapInterfaces.MapAnimationOptions.toMapAnimationOptions(): MapAnimationOp
   return builder.build()
 }
 
-fun FLTMapInterfaces.MapMemoryBudgetInMegabytes.toMapMemoryBudgetInMegabytes(): MapMemoryBudgetInMegabytes {
-  return MapMemoryBudgetInMegabytes(size)
+fun TileCacheBudgetInMegabytes.toMapMemoryBudgetInMegabytes(): com.mapbox.maps.TileCacheBudgetInMegabytes {
+  return com.mapbox.maps.TileCacheBudgetInMegabytes(size)
 }
 
-fun FLTMapInterfaces.MapMemoryBudgetInTiles.toMapMemoryBudgetInTiles(): MapMemoryBudgetInTiles {
-  return MapMemoryBudgetInTiles(size)
+fun TileCacheBudgetInTiles.toMapMemoryBudgetInTiles(): com.mapbox.maps.TileCacheBudgetInTiles {
+  return com.mapbox.maps.TileCacheBudgetInTiles(size)
 }
 
-fun FLTMapInterfaces.SourceQueryOptions.toSourceQueryOptions(): SourceQueryOptions {
-  return SourceQueryOptions(sourceLayerIds, filter.toValue())
+fun SourceQueryOptions.toSourceQueryOptions(): com.mapbox.maps.SourceQueryOptions {
+  return com.mapbox.maps.SourceQueryOptions(sourceLayerIds, filter.toValue())
 }
 
-fun FLTMapInterfaces.RenderedQueryGeometry.toRenderedQueryGeometry(context: Context): RenderedQueryGeometry {
+fun RenderedQueryGeometry.toRenderedQueryGeometry(context: Context): com.mapbox.maps.RenderedQueryGeometry {
   return when (type) {
-    FLTMapInterfaces.Type.SCREEN_BOX -> {
+    Type.SCREEN_BOX -> {
       val screenBoxArray = Gson().fromJson(
         value,
         Array<Array<Double>>::class.java
       )
       val minCoord = screenBoxArray[0]
       val maxCoord = screenBoxArray[1]
-      RenderedQueryGeometry.valueOf(
-        ScreenBox(
-          ScreenCoordinate(
+      com.mapbox.maps.RenderedQueryGeometry.valueOf(
+        com.mapbox.maps.ScreenBox(
+          com.mapbox.maps.ScreenCoordinate(
             minCoord[0].toDevicePixels(context).toDouble(),
             minCoord[1].toDevicePixels(context).toDouble()
           ),
-          ScreenCoordinate(
+          com.mapbox.maps.ScreenCoordinate(
             maxCoord[0].toDevicePixels(context).toDouble(),
             maxCoord[1].toDevicePixels(context).toDouble()
           )
         )
       )
     }
-    FLTMapInterfaces.Type.LIST -> {
+    Type.LIST -> {
       val array: Array<Array<Double>> =
         Gson().fromJson(value, Array<Array<Double>>::class.java)
-      RenderedQueryGeometry.valueOf(
+      com.mapbox.maps.RenderedQueryGeometry.valueOf(
         array.map {
-          ScreenCoordinate(it[0].toDevicePixels(context).toDouble(), it[1].toDevicePixels(context).toDouble())
+          com.mapbox.maps.ScreenCoordinate(it[0].toDevicePixels(context).toDouble(), it[1].toDevicePixels(context).toDouble())
         }.toList()
       )
     }
-    FLTMapInterfaces.Type.SCREEN_COORDINATE -> {
+    Type.SCREEN_COORDINATE -> {
       val pointArray = Gson().fromJson(
         value,
         Array<Double>::class.java
       )
 
-      RenderedQueryGeometry.valueOf(
-        ScreenCoordinate(
+      com.mapbox.maps.RenderedQueryGeometry.valueOf(
+        com.mapbox.maps.ScreenCoordinate(
           pointArray[0].toDevicePixels(context).toDouble(),
           pointArray[1].toDevicePixels(context).toDouble()
         )
@@ -80,23 +261,23 @@ fun FLTMapInterfaces.RenderedQueryGeometry.toRenderedQueryGeometry(context: Cont
   }
 }
 
-fun FLTMapInterfaces.RenderedQueryOptions.toRenderedQueryOptions(): RenderedQueryOptions {
-  return RenderedQueryOptions(layerIds, filter?.toValue())
+fun RenderedQueryOptions.toRenderedQueryOptions(): com.mapbox.maps.RenderedQueryOptions {
+  return com.mapbox.maps.RenderedQueryOptions(layerIds, filter?.toValue())
 }
 
-fun FLTMapInterfaces.MapDebugOptions.toMapDebugOptions(): MapDebugOptions {
-  return MapDebugOptions.values()[data.ordinal]
+fun MapDebugOptions.toMapDebugOptions(): com.mapbox.maps.MapDebugOptions {
+  return com.mapbox.maps.MapDebugOptions.values()[data.ordinal]
 }
 
-fun FLTMapInterfaces.MercatorCoordinate.toMercatorCoordinate(): MercatorCoordinate {
-  return MercatorCoordinate(x, y)
+fun MercatorCoordinate.toMercatorCoordinate(): com.mapbox.maps.MercatorCoordinate {
+  return com.mapbox.maps.MercatorCoordinate(x, y)
 }
 
-fun FLTMapInterfaces.ProjectedMeters.toProjectedMeters(): ProjectedMeters {
-  return ProjectedMeters(northing, easting)
+fun ProjectedMeters.toProjectedMeters(): com.mapbox.maps.ProjectedMeters {
+  return com.mapbox.maps.ProjectedMeters(northing, easting)
 }
 
-fun Map<String, Any>.toPoint(): Point {
+fun Map<String?, Any?>.toPoint(): Point {
   var longitude: Double
   var latitude: Double
   (this["coordinates"] as List<Double>).let { coordinates ->
@@ -118,40 +299,10 @@ fun Map<String, Any>.toPoint(): Point {
   return Point.fromLngLat(longitude, latitude, boundingBox)
 }
 
-fun Map<String, Any>.toPoints(): List<Point> {
-  return (this["coordinates"] as List<List<Double>>).map {
-    Point.fromLngLat(it.first(), it.last())
-  }
-}
+fun CoordinateBounds.toCoordinateBounds() =
+  com.mapbox.maps.CoordinateBounds(southwest, northeast, infiniteBounds)
 
-fun Map<String, Any>.toPointsList(): List<List<Point>> {
-  return (this["coordinates"] as List<List<List<Double>>>).map {
-    it.map {
-      Point.fromLngLat(it.first(), it.last())
-    }
-  }
-}
-
-fun Map<String, Any>.toLineString(): LineString {
-  return LineString.fromLngLats(
-    (this["coordinates"] as List<List<Double>>).map {
-      Point.fromLngLat(it.first(), it.last())
-    }
-  )
-}
-
-fun Map<String, Any>.toPolygon(): Polygon {
-  return Polygon.fromLngLats(
-    (this["coordinates"] as List<List<List<Double>>>).map {
-      it.map { Point.fromLngLat(it.first(), it.last()) }
-    }
-  )
-}
-
-fun FLTMapInterfaces.CoordinateBounds.toCoordinateBounds() =
-  CoordinateBounds(southwest.toPoint(), northeast.toPoint(), infiniteBounds)
-
-fun FLTMapInterfaces.MbxEdgeInsets.toEdgeInsets(context: Context): EdgeInsets {
+fun MbxEdgeInsets.toEdgeInsets(context: Context): EdgeInsets {
   return EdgeInsets(
     top.toDevicePixels(context).toDouble(),
     left.toDevicePixels(context).toDouble(),
@@ -160,24 +311,24 @@ fun FLTMapInterfaces.MbxEdgeInsets.toEdgeInsets(context: Context): EdgeInsets {
   )
 }
 
-fun FLTMapInterfaces.ScreenCoordinate.toScreenCoordinate(context: Context): ScreenCoordinate {
-  return ScreenCoordinate(x.toDevicePixels(context).toDouble(), y.toDevicePixels(context).toDouble())
+fun ScreenCoordinate.toScreenCoordinate(context: Context): com.mapbox.maps.ScreenCoordinate {
+  return com.mapbox.maps.ScreenCoordinate(x.toDevicePixels(context).toDouble(), y.toDevicePixels(context).toDouble())
 }
 
-fun FLTMapInterfaces.CameraOptions.toCameraOptions(context: Context): CameraOptions = CameraOptions.Builder()
+fun CameraOptions.toCameraOptions(context: Context): com.mapbox.maps.CameraOptions = com.mapbox.maps.CameraOptions.Builder()
   .anchor(anchor?.toScreenCoordinate(context))
   .bearing(bearing)
-  .center(center?.toPoint())
+  .center(center)
   .padding(padding?.toEdgeInsets(context))
   .zoom(zoom)
   .pitch(pitch)
   .build()
 
-fun FLTMapInterfaces.ScreenBox.toScreenBox(context: Context): ScreenBox =
-  ScreenBox(min.toScreenCoordinate(context), max.toScreenCoordinate(context))
+fun ScreenBox.toScreenBox(context: Context): com.mapbox.maps.ScreenBox =
+  com.mapbox.maps.ScreenBox(min.toScreenCoordinate(context), max.toScreenCoordinate(context))
 
-fun FLTMapInterfaces.CameraBoundsOptions.toCameraBoundsOptions(): CameraBoundsOptions =
-  CameraBoundsOptions.Builder()
+fun CameraBoundsOptions.toCameraBoundsOptions(): com.mapbox.maps.CameraBoundsOptions =
+  com.mapbox.maps.CameraBoundsOptions.Builder()
     .maxPitch(maxPitch)
     .bounds(bounds?.toCoordinateBounds())
     .maxZoom(maxZoom)
@@ -185,30 +336,37 @@ fun FLTMapInterfaces.CameraBoundsOptions.toCameraBoundsOptions(): CameraBoundsOp
     .minZoom(minZoom)
     .build()
 
-fun Map<String, Any>.toGeometry(): Geometry {
+fun Map<String?, Any?>.toGeometry(): Geometry {
   when {
     this["type"] == "Point" -> {
       return Point.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "Polygon" -> {
       return Polygon.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "MultiPolygon" -> {
       return MultiPolygon.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "MultiPoint" -> {
       return MultiPoint.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "MultiLineString" -> {
       return MultiLineString.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "LineString" -> {
       return LineString.fromJson(Gson().toJson(this))
     }
+
     this["type"] == "GeometryCollection" -> {
       return GeometryCollection.fromJson(Gson().toJson(this))
     }
-    else -> throw(RuntimeException("Unsupported Geometry: ${Gson().toJson(this)}"))
+
+    else -> throw (RuntimeException("Unsupported Geometry: ${Gson().toJson(this)}"))
   }
 }
 
@@ -217,219 +375,156 @@ fun Number.toDevicePixels(context: Context): Float {
 }
 
 // Android to FLT
-fun MercatorCoordinate.toFLTMercatorCoordinate(): FLTMapInterfaces.MercatorCoordinate {
-  return FLTMapInterfaces.MercatorCoordinate.Builder()
-    .setX(x)
-    .setY(y)
-    .build()
+
+fun com.mapbox.maps.CanonicalTileID.toFLTCanonicalTileID(): CanonicalTileID {
+  return CanonicalTileID(z = z.toLong(), x = x.toLong(), y = y.toLong())
 }
 
-fun ProjectedMeters.toFLTProjectedMeters(): FLTMapInterfaces.ProjectedMeters {
-  return FLTMapInterfaces.ProjectedMeters.Builder()
-    .setEasting(easting)
-    .setNorthing(northing)
-    .build()
+fun com.mapbox.common.LoggingLevel.toFLTLoggingLevel(): LoggingLevel {
+  return when (this) {
+    com.mapbox.common.LoggingLevel.DEBUG -> LoggingLevel.DEBUG
+    com.mapbox.common.LoggingLevel.INFO -> LoggingLevel.INFO
+    com.mapbox.common.LoggingLevel.WARNING -> LoggingLevel.WARNING
+    com.mapbox.common.LoggingLevel.ERROR -> LoggingLevel.ERROR
+  }
+}
+fun StyleTransition.toFLTTransitionOptions(): TransitionOptions {
+  return TransitionOptions(delay, duration)
+}
+fun com.mapbox.maps.plugin.ModelScaleMode.toFLTModelScaleMode(): ModelScaleMode {
+  return when (this) {
+    com.mapbox.maps.plugin.ModelScaleMode.VIEWPORT -> ModelScaleMode.VIEWPORT
+    com.mapbox.maps.plugin.ModelScaleMode.MAP -> ModelScaleMode.MAP
+    else -> { throw java.lang.RuntimeException("Scale mode not supported: $this") }
+  }
+}
+fun com.mapbox.maps.StylePropertyValue.toFLTStylePropertyValue(): StylePropertyValue {
+  return StylePropertyValue(value.toJson(), StylePropertyValueKind.values()[kind.ordinal])
 }
 
-fun FeatureExtensionValue.toFLTFeatureExtensionValue(): FLTMapInterfaces.FeatureExtensionValue {
+fun ProjectionName.toFLTProjectionName(): StyleProjectionName {
+  return when (this) {
+    ProjectionName.GLOBE -> StyleProjectionName.GLOBE
+    ProjectionName.MERCATOR -> StyleProjectionName.MERCATOR
+    else -> {
+      throw java.lang.RuntimeException("Projection $this is not supported.")
+    }
+  }
+}
+
+fun Projection.toFLTProjection(): StyleProjection {
+  return StyleProjection(name.toFLTProjectionName())
+}
+
+fun com.mapbox.maps.StyleObjectInfo.toFLTStyleObjectInfo(): StyleObjectInfo {
+  return StyleObjectInfo(id, type)
+}
+
+fun com.mapbox.maps.MercatorCoordinate.toFLTMercatorCoordinate(): MercatorCoordinate {
+  return MercatorCoordinate(x, y)
+}
+
+fun com.mapbox.maps.ProjectedMeters.toFLTProjectedMeters(): ProjectedMeters {
+  return ProjectedMeters(northing, easting)
+}
+
+fun com.mapbox.maps.FeatureExtensionValue.toFLTFeatureExtensionValue(): FeatureExtensionValue {
   val map = featureCollection?.map { JSONObject(it.toJson()).toMap() }
-  return FLTMapInterfaces.FeatureExtensionValue.Builder()
-    .setFeatureCollection(map)
-    .setValue(value?.toJson())
-    .build()
+  return FeatureExtensionValue(value?.toJson(), map)
 }
 
-fun QueriedFeature.toFLTQueriedFeature(): FLTMapInterfaces.QueriedFeature {
-  return FLTMapInterfaces.QueriedFeature.Builder()
-    .setFeature(JSONObject(this.feature.toJson()).toMap())
-    .setSource(this.source)
-    .setSourceLayer(this.sourceLayer)
-    .setState(this.state.toJson())
-    .build()
+fun com.mapbox.maps.QueriedFeature.toFLTQueriedFeature(): QueriedFeature {
+  return QueriedFeature(JSONObject(this.feature.toJson()).toMap(), source, sourceLayer, state.toJson())
 }
 
-fun TileStoreUsageMode.toFLTTileStoreUsageMode(): FLTMapInterfaces.TileStoreUsageMode {
-  return FLTMapInterfaces.TileStoreUsageMode.values()[ordinal]
+fun com.mapbox.maps.QueriedRenderedFeature.toFLTQueriedRenderedFeature(): QueriedRenderedFeature {
+  return QueriedRenderedFeature(queriedFeature.toFLTQueriedFeature(), layers)
 }
 
-fun ResourceOptions.toFLTResourceOptions(): FLTMapInterfaces.ResourceOptions {
-  val builder = FLTMapInterfaces.ResourceOptions.Builder()
-    .setAccessToken(accessToken)
-    .setTileStoreUsageMode(tileStoreUsageMode.toFLTTileStoreUsageMode())
-  baseURL?.let {
-    builder.setBaseURL(it)
-  }
-  dataPath?.let {
-    builder.setDataPath(it)
-  }
-  assetPath?.let {
-    builder.setAssetPath(it)
-  }
-  return builder.build()
+fun com.mapbox.maps.QueriedSourceFeature.toFLTQueriedSourceFeature(): QueriedSourceFeature {
+  return QueriedSourceFeature(queriedFeature.toFLTQueriedFeature())
 }
 
-fun MapDebugOptions.toFLTMapDebugOptions(): FLTMapInterfaces.MapDebugOptions {
-  return FLTMapInterfaces.MapDebugOptions.Builder()
-    .setData(FLTMapInterfaces.MapDebugOptionsData.values()[ordinal]).build()
+fun com.mapbox.maps.TileStoreUsageMode.toFLTTileStoreUsageMode(): TileStoreUsageMode {
+  return TileStoreUsageMode.values()[ordinal]
 }
 
-fun GlyphsRasterizationOptions.toFLTGlyphsRasterizationOptions(): FLTMapInterfaces.GlyphsRasterizationOptions {
-  return FLTMapInterfaces.GlyphsRasterizationOptions.Builder()
-    .setFontFamily(fontFamily)
-    .setRasterizationMode(
-      FLTMapInterfaces.GlyphsRasterizationMode.values()[rasterizationMode.ordinal]
-    )
-    .build()
+fun com.mapbox.maps.MapDebugOptions.toFLTMapDebugOptions(): MapDebugOptions {
+  return MapDebugOptions(MapDebugOptionsData.values()[ordinal])
 }
 
-fun MapOptions.toFLTMapOptions(context: Context): FLTMapInterfaces.MapOptions {
-  val builder = FLTMapInterfaces.MapOptions.Builder()
-  constrainMode?.let {
-    val values = FLTMapInterfaces.ConstrainMode.values()
-    builder.setConstrainMode(
-      values[it.ordinal]
-    )
-  }
-  contextMode?.let {
-    builder.setContextMode(
-      FLTMapInterfaces.ContextMode.values()[it.ordinal]
-    )
-  }
-  viewportMode?.let {
-    builder.setViewportMode(
-      FLTMapInterfaces.ViewportMode.values()[it.ordinal]
-    )
-  }
-  orientation?.let {
-    builder.setOrientation(
-      FLTMapInterfaces.NorthOrientation.values()[it.ordinal]
-    )
-  }
-  crossSourceCollisions?.let {
-    builder.setCrossSourceCollisions(it)
-  }
-  optimizeForTerrain?.let {
-    builder.setOptimizeForTerrain(it)
-  }
-  size?.let {
-    builder.setSize(it.toFLTSize(context))
-  }
-  glyphsRasterizationOptions?.let {
-    builder.setGlyphsRasterizationOptions(it.toFLTGlyphsRasterizationOptions())
-  }
-  return builder
-    .setPixelRatio(pixelRatio.toDouble())
-    .build()
+fun com.mapbox.maps.GlyphsRasterizationOptions.toFLTGlyphsRasterizationOptions(): GlyphsRasterizationOptions {
+  return GlyphsRasterizationOptions(GlyphsRasterizationMode.values()[rasterizationMode.ordinal], fontFamily)
 }
 
-fun Size.toFLTSize(context: Context): FLTMapInterfaces.Size {
-  return FLTMapInterfaces.Size.Builder()
-    .setHeight(height.toLogicalPixels(context))
-    .setWidth(width.toLogicalPixels(context))
-    .build()
+fun com.mapbox.maps.MapOptions.toFLTMapOptions(context: Context): MapOptions {
+  return MapOptions(
+    contextMode = contextMode?.let { ContextMode.values()[it.ordinal] },
+    constrainMode = constrainMode?.let { ConstrainMode.values()[it.ordinal] },
+    viewportMode = viewportMode?.let { ViewportMode.values()[it.ordinal] },
+    orientation = orientation?.let { NorthOrientation.values()[it.ordinal] },
+    crossSourceCollisions = crossSourceCollisions,
+    size = size?.toFLTSize(context),
+    pixelRatio = pixelRatio.toDouble(),
+    glyphsRasterizationOptions = glyphsRasterizationOptions?.toFLTGlyphsRasterizationOptions()
+  )
 }
 
-fun Point.toMap(): Map<String, Any> {
-  val map = mutableMapOf<String, Any>()
-  map["coordinates"] = coordinates()
-  bbox()?.let {
-    map["bbox"] = mapOf(Pair("southwest", it.southwest()), Pair("northeast", it.northeast()))
-  }
-  return map
+fun com.mapbox.maps.Size.toFLTSize(context: Context): Size {
+  return Size(width.toLogicalPixels(context), height.toLogicalPixels(context))
 }
 
-fun Polygon.toMap(): Map<String, Any> {
-  val map = mutableMapOf<String, Any>()
-  map["coordinates"] = coordinates().map { it.map { it.coordinates() } }
-  bbox()?.let {
-    map["bbox"] = mapOf(Pair("southwest", it.southwest()), Pair("northeast", it.northeast()))
-  }
-  return map
+fun com.mapbox.maps.ScreenCoordinate.toFLTScreenCoordinate(context: Context): ScreenCoordinate {
+  return ScreenCoordinate(x.toLogicalPixels(context), y.toLogicalPixels(context))
 }
 
-fun LineString.toMap(): Map<String, Any> {
-  val map = mutableMapOf<String, Any>()
-  map["coordinates"] = coordinates().map { it.coordinates() }
-  bbox()?.let {
-    map["bbox"] = mapOf(Pair("southwest", it.southwest()), Pair("northeast", it.northeast()))
-  }
-  return map
+fun com.mapbox.maps.EdgeInsets.toFLTEdgeInsets(context: Context): MbxEdgeInsets = MbxEdgeInsets(
+  left = left.toLogicalPixels(context),
+  top = top.toLogicalPixels(context),
+  bottom = bottom.toLogicalPixels(context),
+  right = right.toLogicalPixels(context)
+)
+
+fun com.mapbox.maps.CameraState.toCameraState(context: Context): CameraState = CameraState(
+  bearing = bearing,
+  padding = padding.toFLTEdgeInsets(context),
+  pitch = pitch,
+  zoom = zoom,
+  center = center
+)
+
+fun com.mapbox.maps.CoordinateBounds.toFLTCoordinateBounds(): CoordinateBounds =
+  CoordinateBounds(southwest, northeast, infiniteBounds)
+
+fun com.mapbox.maps.CoordinateBoundsZoom.toFLTCoordinateBoundsZoom(): CoordinateBoundsZoom =
+  CoordinateBoundsZoom(bounds.toFLTCoordinateBounds(), zoom)
+
+fun com.mapbox.maps.CameraBounds.toFLTCameraBounds() = CameraBounds(
+  maxPitch = maxPitch,
+  minPitch = minPitch,
+  maxZoom = maxZoom,
+  minZoom = minZoom,
+  bounds = bounds.toFLTCoordinateBounds()
+)
+
+fun com.mapbox.maps.CameraOptions.toFLTCameraOptions(context: Context): CameraOptions {
+  return CameraOptions(
+    center = center,
+    anchor = anchor?.toFLTScreenCoordinate(context),
+    padding = padding?.toFLTEdgeInsets(context),
+    zoom = zoom,
+    pitch = pitch,
+    bearing = bearing
+  )
 }
 
-fun ScreenCoordinate.toFLTScreenCoordinate(context: Context): FLTMapInterfaces.ScreenCoordinate {
-  return FLTMapInterfaces.ScreenCoordinate.Builder()
-    .setX(x.toLogicalPixels(context))
-    .setY(y.toLogicalPixels(context))
-    .build()
-}
-
-fun EdgeInsets.toFLTEdgeInsets(context: Context): FLTMapInterfaces.MbxEdgeInsets = FLTMapInterfaces.MbxEdgeInsets.Builder()
-  .setLeft(left.toLogicalPixels(context))
-  .setTop(top.toLogicalPixels(context))
-  .setBottom(bottom.toLogicalPixels(context))
-  .setRight(right.toLogicalPixels(context))
-  .build()
-
-fun CameraState.toCameraState(context: Context): FLTMapInterfaces.CameraState = FLTMapInterfaces.CameraState.Builder()
-  .setBearing(bearing)
-  .setPadding(padding.toFLTEdgeInsets(context))
-  .setPitch(pitch)
-  .setZoom(zoom)
-  .setCenter(center.toMap())
-  .build()
-
-fun CoordinateBounds.toFLTCoordinateBounds(): FLTMapInterfaces.CoordinateBounds =
-  FLTMapInterfaces.CoordinateBounds.Builder()
-    .setNortheast(northeast.toMap())
-    .setSouthwest(southwest.toMap())
-    .setInfiniteBounds(infiniteBounds)
-    .build()
-
-fun CoordinateBoundsZoom.toFLTCoordinateBoundsZoom(): FLTMapInterfaces.CoordinateBoundsZoom =
-  FLTMapInterfaces.CoordinateBoundsZoom.Builder()
-    .setBounds(bounds.toFLTCoordinateBounds())
-    .setZoom(zoom)
-    .build()
-
-fun CameraBounds.toFLTCameraBounds() = FLTMapInterfaces.CameraBounds.Builder().setMaxPitch(maxPitch)
-  .setMinPitch(minPitch)
-  .setMaxZoom(maxZoom)
-  .setMinZoom(minZoom)
-  .setBounds(bounds.toFLTCoordinateBounds())
-  .build()
-
-fun CameraOptions.toFLTCameraOptions(context: Context): FLTMapInterfaces.CameraOptions {
-  val builder = FLTMapInterfaces.CameraOptions.Builder()
-  anchor?.let { anchor ->
-    builder.setAnchor(anchor.toFLTScreenCoordinate(context))
-  }
-  center?.let { center ->
-    val centerMap = mutableMapOf<String, Any>()
-    centerMap["coordinates"] = listOf(center.longitude(), center.latitude())
-    builder.setCenter(centerMap)
-  }
-  padding?.let { padding ->
-    val fLTPadding = FLTMapInterfaces.MbxEdgeInsets.Builder()
-      .setBottom(padding.bottom.toLogicalPixels(context))
-      .setLeft(padding.left.toLogicalPixels(context))
-      .setRight(padding.right.toLogicalPixels(context))
-      .setTop(padding.top.toLogicalPixels(context))
-      .build()
-    builder.setPadding(fLTPadding)
-  }
-  return builder
-    .setZoom(zoom)
-    .setPitch(pitch)
-    .setBearing(bearing)
-    .build()
-}
-
-fun JSONObject.toMap(): Map<String, *> = keys().asSequence().associateWith {
+fun JSONObject.toMap(): Map<String?, Any?> = keys().asSequence().associateWith {
   when (val value = this[it]) {
     is JSONArray -> {
       val map = (0 until value.length()).associate { Pair(it.toString(), value[it]) }
       JSONObject(map).toMap().values.toList()
     }
+
     is JSONObject -> value.toMap()
     JSONObject.NULL -> null
     else -> value
@@ -438,4 +533,206 @@ fun JSONObject.toMap(): Map<String, *> = keys().asSequence().associateWith {
 
 fun Number.toLogicalPixels(context: Context): Double {
   return this.toDouble() / context.resources.displayMetrics.density
+}
+
+fun Bitmap.toMbxImage(): MbxImage {
+  val outputStream = ByteArrayOutputStream(byteCount)
+  compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+  return MbxImage(width.toLong(), height.toLong(), outputStream.toByteArray())
+}
+
+fun StylePackLoadOptions.toStylePackLoadOptions(): com.mapbox.maps.StylePackLoadOptions {
+  return com.mapbox.maps.StylePackLoadOptions.Builder()
+    .glyphsRasterizationMode(glyphsRasterizationMode?.toGlyphsRasterizationMode())
+    .metadata(metadata?.toValue())
+    .acceptExpired(acceptExpired)
+    .build()
+}
+
+fun com.mapbox.maps.StylePack.toFLTStylePack(): StylePack {
+  return StylePack(
+    styleURI = this.styleURI,
+    glyphsRasterizationMode = this.glyphsRasterizationMode.toFLTGlyphsRasterizationMode(),
+    requiredResourceCount = this.requiredResourceCount,
+    completedResourceSize = this.completedResourceCount,
+    completedResourceCount = this.completedResourceCount,
+    expires = this.expires?.time
+  )
+}
+
+fun com.mapbox.maps.StylePackLoadProgress.toFLTStylePackLoadProgress(): StylePackLoadProgress {
+  return StylePackLoadProgress(
+    this.completedResourceCount,
+    this.completedResourceSize,
+    this.erroredResourceCount,
+    this.requiredResourceCount,
+    this.loadedResourceCount,
+    this.loadedResourceSize
+  )
+}
+
+fun TilesetDescriptorOptions.toTilesetDescriptorOptions(): com.mapbox.maps.TilesetDescriptorOptions {
+  val builder = com.mapbox.maps.TilesetDescriptorOptions.Builder()
+    .styleURI(styleURI)
+    .minZoom(minZoom.toByte())
+    .maxZoom(maxZoom.toByte())
+  pixelRatio?.let { builder.pixelRatio(it.toFloat()) }
+  tilesets?.let { builder.tilesets(it) }
+  stylePackOptions?.let { builder.stylePackOptions(it.toStylePackLoadOptions()) }
+  extraOptions?.let { builder.extraOptions(it.toValue()) }
+  return builder.build()
+}
+
+fun NetworkRestriction.toNetworkRestriction(): com.mapbox.common.NetworkRestriction {
+  return when (this) {
+    NetworkRestriction.DISALLOW_ALL -> com.mapbox.common.NetworkRestriction.DISALLOW_ALL
+    NetworkRestriction.DISALLOW_EXPENSIVE -> com.mapbox.common.NetworkRestriction.DISALLOW_EXPENSIVE
+    NetworkRestriction.NONE -> com.mapbox.common.NetworkRestriction.NONE
+  }
+}
+
+fun com.mapbox.common.TileRegion.toFLTTileRegion(): TileRegion {
+  return TileRegion(
+    this.id,
+    this.requiredResourceCount,
+    this.completedResourceCount,
+    this.completedResourceSize
+  )
+}
+
+fun TileRegionEstimateOptions.toTileRegionEstimateOptions(): com.mapbox.common.TileRegionEstimateOptions {
+  return com.mapbox.common.TileRegionEstimateOptions(
+    this.errorMargin.toFloat(),
+    this.preciseEstimationTimeout.toLong(),
+    this.preciseEstimationTimeout.toLong(),
+    this.extraOptions?.toValue()
+  )
+}
+
+fun com.mapbox.common.TileRegionEstimateResult.toFLTTileRegionEstimateResult(): TileRegionEstimateResult {
+  return TileRegionEstimateResult(
+    this.errorMargin, this.transferSize, this.storageSize,
+  )
+}
+
+fun com.mapbox.common.TileRegionLoadProgress.toFLTTileRegionLoadProgress(): TileRegionLoadProgress {
+  return TileRegionLoadProgress(
+    this.completedResourceCount,
+    this.completedResourceSize,
+    this.erroredResourceCount,
+    this.requiredResourceCount,
+    this.loadedResourceCount,
+    this.loadedResourceSize
+  )
+}
+
+fun com.mapbox.common.TileRegionEstimateProgress.toFLTTileRegionEstimateProgress(): TileRegionEstimateProgress {
+  return TileRegionEstimateProgress(
+    this.requiredResourceCount, this.completedResourceCount, this.erroredResourceCount
+  )
+}
+
+fun Expected<String, None>.handleResult(callback: (Result<Unit>) -> Unit) {
+  if (this.isError) {
+    callback(Result.failure(Throwable(this.error)))
+  } else {
+    callback(Result.success(Unit))
+  }
+}
+
+@JvmName("toStylePackResult")
+fun <V : Any, NewValue> Expected<StylePackError, V>.toResult(valueTransform: (V) -> NewValue): Result<NewValue> {
+  return fold(
+    {
+      Result.failure(Throwable(it.message))
+    },
+    {
+      Result.success(valueTransform(it))
+    }
+  )
+}
+
+@JvmName("toTileRegionResult")
+fun <V : Any, NewValue> Expected<TileRegionError, V>.toResult(valueTransform: (V) -> NewValue): Result<NewValue> {
+  return fold(
+    {
+      Result.failure(Throwable(it.message))
+    },
+    {
+      Result.success(valueTransform(it))
+    }
+  )
+}
+
+fun Value.toFLTValue(): Any? {
+  return when (contents) {
+    is List<*> -> {
+      (contents as List<*>).map { (it as? Value)?.toFLTValue() ?: it }
+    }
+
+    is Map<*, *> -> {
+      (contents as Map<*, *>)
+        .mapKeys { (it.key as? Value)?.toFLTValue() ?: it.key }
+        .mapValues { (it.value as? Value)?.toFLTValue() ?: it.value }
+    }
+
+    else -> {
+      contents
+    }
+  }
+}
+
+fun Any.toValue(): Value {
+  return if (this is String) {
+    if (this.startsWith("{") || this.startsWith("[")) {
+      Value.fromJson(this).value!!
+    } else {
+      val number = this.toDoubleOrNull()
+      if (number != null) {
+        Value.valueOf(number)
+      } else {
+        Value.valueOf(this)
+      }
+    }
+  } else if (this is Double) {
+    Value.valueOf(this)
+  } else if (this is Long) {
+    Value.valueOf(this)
+  } else if (this is Int) {
+    Value.valueOf(this.toLong())
+  } else if (this is Boolean) {
+    Value.valueOf(this)
+  } else if (this is IntArray) {
+    val valueArray = this.map { Value(it.toLong()) }
+    Value(valueArray)
+  } else if (this is BooleanArray) {
+    val valueArray = this.map(::Value)
+    Value(valueArray)
+  } else if (this is DoubleArray) {
+    val valueArray = this.map(::Value)
+    Value(valueArray)
+  } else if (this is FloatArray) {
+    val valueArray = this.map { Value(it.toDouble()) }
+    Value(valueArray)
+  } else if (this is LongArray) {
+    val valueArray = this.map(::Value)
+    Value(valueArray)
+  } else if (this is Array<*>) {
+    val valueArray = this.map { it?.toValue() }
+    Value(valueArray)
+  } else if (this is List<*>) {
+    val valueArray = this.map { it?.toValue() }
+    Value(valueArray)
+  } else if (this is HashMap<*, *>) {
+    val valueMap = this
+      .mapKeys { it.key as? String }
+      .mapValues { it.value.toValue() }
+    Value.valueOf(kotlin.collections.HashMap(valueMap))
+  } else {
+    logE(
+      "StyleController",
+      "Can not map value, type is not supported: ${this::class.java.canonicalName}"
+    )
+    Value.valueOf("")
+  }
 }

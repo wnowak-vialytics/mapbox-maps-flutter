@@ -5,8 +5,8 @@ part of mapbox_maps_flutter;
 /// @see [The online documentation](https://docs.mapbox.com/mapbox-gl-js/style-spec/sources/#geojson)
 class GeoJsonSource extends Source {
   GeoJsonSource({
-    required id,
-    String? data,
+    required String id,
+    String? data = "",
     double? maxzoom,
     String? attribution,
     double? buffer,
@@ -14,10 +14,12 @@ class GeoJsonSource extends Source {
     bool? cluster,
     double? clusterRadius,
     double? clusterMaxZoom,
+    double? clusterMinPoints,
     Map<String, dynamic>? clusterProperties,
     bool? lineMetrics,
     bool? generateId,
     double? prefetchZoomDelta,
+    TileCacheBudget? tileCacheBudget,
   }) : super(id: id) {
     _data = data;
     _maxzoom = maxzoom;
@@ -27,10 +29,12 @@ class GeoJsonSource extends Source {
     _cluster = cluster;
     _clusterRadius = clusterRadius;
     _clusterMaxZoom = clusterMaxZoom;
+    _clusterMinPoints = clusterMinPoints;
     _clusterProperties = clusterProperties;
     _lineMetrics = lineMetrics;
     _generateId = generateId;
     _prefetchZoomDelta = prefetchZoomDelta;
+    _tileCacheBudget = tileCacheBudget;
   }
 
   @override
@@ -41,8 +45,8 @@ class GeoJsonSource extends Source {
   /// A URL to a GeoJSON file, or inline GeoJSON.
   Future<String?> get data async {
     return _style?.getStyleSourceProperty(id, "data").then((value) {
-      if (value.value != '<null>') {
-        return value.value;
+      if (value.value != null) {
+        return value.value as String;
       } else {
         return null;
       }
@@ -52,10 +56,11 @@ class GeoJsonSource extends Source {
   double? _maxzoom;
 
   /// Maximum zoom level at which to create vector tiles (higher means greater detail at high zoom levels).
+  /// Default value: 18.
   Future<double?> get maxzoom async {
     return _style?.getStyleSourceProperty(id, "maxzoom").then((value) {
-      if (value.value != '<null>') {
-        return double.parse(value.value);
+      if (value.value != null) {
+        return (value.value as num).toDouble();
       } else {
         return null;
       }
@@ -67,8 +72,8 @@ class GeoJsonSource extends Source {
   /// Contains an attribution to be displayed when the map is shown to a user.
   Future<String?> get attribution async {
     return _style?.getStyleSourceProperty(id, "attribution").then((value) {
-      if (value.value != '<null>') {
-        return value.value;
+      if (value.value != null) {
+        return value.value as String;
       } else {
         return null;
       }
@@ -78,10 +83,11 @@ class GeoJsonSource extends Source {
   double? _buffer;
 
   /// Size of the tile buffer on each side. A value of 0 produces no buffer. A value of 512 produces a buffer as wide as the tile itself. Larger values produce fewer rendering artifacts near tile edges and slower performance.
+  /// Default value: 128. Value range: [0, 512]
   Future<double?> get buffer async {
     return _style?.getStyleSourceProperty(id, "buffer").then((value) {
-      if (value.value != '<null>') {
-        return double.parse(value.value);
+      if (value.value != null) {
+        return (value.value as num).toDouble();
       } else {
         return null;
       }
@@ -91,10 +97,11 @@ class GeoJsonSource extends Source {
   double? _tolerance;
 
   /// Douglas-Peucker simplification tolerance (higher means simpler geometries and faster performance).
+  /// Default value: 0.375.
   Future<double?> get tolerance async {
     return _style?.getStyleSourceProperty(id, "tolerance").then((value) {
-      if (value.value != '<null>') {
-        return double.parse(value.value);
+      if (value.value != null) {
+        return (value.value as num).toDouble();
       } else {
         return null;
       }
@@ -104,18 +111,15 @@ class GeoJsonSource extends Source {
   bool? _cluster;
 
   /// If the data is a collection of point features, setting this to true clusters the points by radius into groups. Cluster groups become new `Point` features in the source with additional properties:
-  ///  * `cluster` Is `true` if the point is a cluster
-  ///  * `cluster_id` A unqiue id for the cluster to be used in conjunction with the cluster inspection methods
-  ///  * `point_count` Number of original points grouped into this cluster
-  ///  * `point_count_abbreviated` An abbreviated point count
+  ///  - `cluster` Is `true` if the point is a cluster
+  ///  - `cluster_id` A unqiue id for the cluster to be used in conjunction with the [cluster inspection methods](https://www.mapbox.com/mapbox-gl-js/api/#geojsonsource#getclusterexpansionzoom)
+  ///  - `point_count` Number of original points grouped into this cluster
+  ///  - `point_count_abbreviated` An abbreviated point count
+  /// Default value: false.
   Future<bool?> get cluster async {
     return _style?.getStyleSourceProperty(id, "cluster").then((value) {
-      if (value.value != '<null>') {
-        if (Platform.isIOS) {
-          return value.value.toLowerCase() == '1';
-        } else {
-          return value.value.toLowerCase() == 'true';
-        }
+      if (value.value != null) {
+        return value.value as bool;
       } else {
         return null;
       }
@@ -125,10 +129,11 @@ class GeoJsonSource extends Source {
   double? _clusterRadius;
 
   /// Radius of each cluster if clustering is enabled. A value of 512 indicates a radius equal to the width of a tile.
+  /// Default value: 50. Minimum value: 0.
   Future<double?> get clusterRadius async {
     return _style?.getStyleSourceProperty(id, "clusterRadius").then((value) {
-      if (value.value != '<null>') {
-        return double.parse(value.value);
+      if (value.value != null) {
+        return (value.value as num).toDouble();
       } else {
         return null;
       }
@@ -140,8 +145,21 @@ class GeoJsonSource extends Source {
   /// Max zoom on which to cluster points if clustering is enabled. Defaults to one zoom less than maxzoom (so that last zoom features are not clustered). Clusters are re-evaluated at integer zoom levels so setting clusterMaxZoom to 14 means the clusters will be displayed until z15.
   Future<double?> get clusterMaxZoom async {
     return _style?.getStyleSourceProperty(id, "clusterMaxZoom").then((value) {
-      if (value.value != '<null>') {
-        return double.parse(value.value);
+      if (value.value != null) {
+        return (value.value as num).toDouble();
+      } else {
+        return null;
+      }
+    });
+  }
+
+  double? _clusterMinPoints;
+
+  /// Minimum number of points necessary to form a cluster if clustering is enabled. Defaults to `2`.
+  Future<double?> get clusterMinPoints async {
+    return _style?.getStyleSourceProperty(id, "clusterMinPoints").then((value) {
+      if (value.value != null) {
+        return (value.value as num).toDouble();
       } else {
         return null;
       }
@@ -160,8 +178,9 @@ class GeoJsonSource extends Source {
     return _style
         ?.getStyleSourceProperty(id, "clusterProperties")
         .then((value) {
-      if (value.value != '<null>') {
-        return json.decode(value.value);
+      if (value.value != null) {
+        return Map<String, dynamic>.from(value.value as Map<dynamic, dynamic>)
+            .cast<String, dynamic>();
       } else {
         return null;
       }
@@ -171,14 +190,11 @@ class GeoJsonSource extends Source {
   bool? _lineMetrics;
 
   /// Whether to calculate line distance metrics. This is required for line layers that specify `line-gradient` values.
+  /// Default value: false.
   Future<bool?> get lineMetrics async {
     return _style?.getStyleSourceProperty(id, "lineMetrics").then((value) {
-      if (value.value != '<null>') {
-        if (Platform.isIOS) {
-          return value.value.toLowerCase() == '1';
-        } else {
-          return value.value.toLowerCase() == 'true';
-        }
+      if (value.value != null) {
+        return value.value as bool;
       } else {
         return null;
       }
@@ -187,15 +203,12 @@ class GeoJsonSource extends Source {
 
   bool? _generateId;
 
-  /// Whether to generate ids for the geojson features. When enabled, the `feature.id` property will be auto assigned based on its index in the `features` array, over-writing any previous values.
+  /// Whether to generate ids for the GeoJSON features. When enabled, the `feature.id` property will be auto assigned based on its index in the `features` array, over-writing any previous values.
+  /// Default value: false.
   Future<bool?> get generateId async {
     return _style?.getStyleSourceProperty(id, "generateId").then((value) {
-      if (value.value != '<null>') {
-        if (Platform.isIOS) {
-          return value.value.toLowerCase() == '1';
-        } else {
-          return value.value.toLowerCase() == 'true';
-        }
+      if (value.value != null) {
+        return value.value as bool;
       } else {
         return null;
       }
@@ -204,13 +217,29 @@ class GeoJsonSource extends Source {
 
   double? _prefetchZoomDelta;
 
-  /// When loading a map, if PrefetchZoomDelta is set to any number greater than 0, the map will first request a tile at zoom level lower than zoom - delta, but so that the zoom level is multiple of delta, in an attempt to display a full map at lower resolution as quick as possible. It will get clamped at the tile source minimum zoom. The default delta is 4.
+  /// When loading a map, if PrefetchZoomDelta is set to any number greater than 0, the map will first request a tile at zoom level lower than zoom - delta, but so that the zoom level is multiple of delta, in an attempt to display a full map at lower resolution as quick as possible. It will get clamped at the tile source minimum zoom.
+  /// Default value: 4.
   Future<double?> get prefetchZoomDelta async {
     return _style
         ?.getStyleSourceProperty(id, "prefetch-zoom-delta")
         .then((value) {
-      if (value.value != '<null>') {
-        return double.parse(value.value);
+      if (value.value != null) {
+        return (value.value as num).toDouble();
+      } else {
+        return null;
+      }
+    });
+  }
+
+  TileCacheBudget? _tileCacheBudget;
+
+  /// This property defines a source-specific resource budget, either in tile units or in megabytes. Whenever the tile cache goes over the defined limit, the least recently used tile will be evicted from the in-memory cache. Note that the current implementation does not take into account resources allocated by the visible tiles.
+  Future<TileCacheBudget?> get tileCacheBudget async {
+    return _style
+        ?.getStyleSourceProperty(id, "tile-cache-budget")
+        .then((value) {
+      if (value.value != null) {
+        return TileCacheBudget.decode(value.value);
       } else {
         return null;
       }
@@ -229,6 +258,9 @@ class GeoJsonSource extends Source {
     if (volatile) {
       if (_prefetchZoomDelta != null) {
         properties["prefetch-zoom-delta"] = _prefetchZoomDelta;
+      }
+      if (_tileCacheBudget != null) {
+        properties["tile-cache-budget"] = _tileCacheBudget;
       }
     } else {
       properties["id"] = id;
@@ -256,6 +288,9 @@ class GeoJsonSource extends Source {
       }
       if (_clusterMaxZoom != null) {
         properties["clusterMaxZoom"] = _clusterMaxZoom;
+      }
+      if (_clusterMinPoints != null) {
+        properties["clusterMinPoints"] = _clusterMinPoints;
       }
       if (_clusterProperties != null) {
         properties["clusterProperties"] = _clusterProperties;

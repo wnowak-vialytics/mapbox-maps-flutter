@@ -8,10 +8,6 @@ import 'package:mapbox_maps_example/empty_map_widget.dart' as app;
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<void> addDelay(int ms) async {
-    await Future<void>.delayed(Duration(milliseconds: ms));
-  }
-
   testWidgets('create CircleAnnotation', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
@@ -20,7 +16,7 @@ void main() {
     var geometry = Point(coordinates: Position(1.0, 2.0));
 
     var circleAnnotationOptions = CircleAnnotationOptions(
-      geometry: geometry.toJson(),
+      geometry: geometry,
       circleSortKey: 1.0,
       circleBlur: 1.0,
       circleColor: Colors.red.value,
@@ -31,7 +27,7 @@ void main() {
       circleStrokeWidth: 1.0,
     );
     final annotation = await manager.create(circleAnnotationOptions);
-    var point = Point.fromJson((annotation.geometry)!.cast());
+    var point = annotation.geometry;
     expect(1.0, point.coordinates.lng);
     expect(2.0, point.coordinates.lat);
     expect(1.0, annotation.circleSortKey);
@@ -53,14 +49,14 @@ void main() {
     var geometry = Point(coordinates: Position(1.0, 2.0));
 
     var circleAnnotationOptions = CircleAnnotationOptions(
-      geometry: geometry.toJson(),
+      geometry: geometry,
     );
     final annotation = await manager.create(circleAnnotationOptions);
-    var point = Point.fromJson((annotation.geometry)!.cast());
+    var point = annotation.geometry;
     var newPoint = Point(
         coordinates:
             Position(point.coordinates.lng + 1.0, point.coordinates.lat + 1.0));
-    annotation.geometry = newPoint.toJson();
+    annotation.geometry = newPoint;
     await manager.update(annotation);
     await manager.delete(annotation);
 
@@ -69,7 +65,6 @@ void main() {
     }
 
     await manager.deleteAll();
-    await addDelay(1000);
   });
 }
 // End of generated file.

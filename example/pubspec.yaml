@@ -1,13 +1,15 @@
 name: mapbox_maps_example
-description: Demonstrates how to use the mapbox_maps_flutter plugin.
+description: Demonstrates how to use the Mapbox Maps Flutter SDK.
+version: "1.0.0-beta.1"
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
+
 environment:
-  sdk: ">=2.19.0 <3.0.0"
-  flutter: ">=2.0.0"
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
 
 dependencies:
   flutter:
@@ -22,13 +24,12 @@ dependencies:
   permission_handler: ^10.0.0
   font_awesome_flutter: ^10.1.0
   http: ^0.13.5
+  path_provider: ^2.1.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   integration_test:
-    sdk: flutter
-  flutter_driver:
     sdk: flutter
   turf: ^0.0.7
 

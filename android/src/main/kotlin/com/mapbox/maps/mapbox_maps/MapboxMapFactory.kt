@@ -1,44 +1,42 @@
 package com.mapbox.maps.mapbox_maps
 
+import android.annotation.SuppressLint
 import android.content.Context
-import com.mapbox.common.*
-import com.mapbox.maps.*
+import com.mapbox.common.FeatureTelemetryCounter
+import com.mapbox.maps.CameraOptions
+import com.mapbox.maps.ConstrainMode
+import com.mapbox.maps.ContextMode
+import com.mapbox.maps.EdgeInsets
+import com.mapbox.maps.GlyphsRasterizationMode
+import com.mapbox.maps.GlyphsRasterizationOptions
+import com.mapbox.maps.MapInitOptions
+import com.mapbox.maps.MapOptions
+import com.mapbox.maps.NorthOrientation
+import com.mapbox.maps.ScreenCoordinate
+import com.mapbox.maps.Size
+import com.mapbox.maps.Style
+import com.mapbox.maps.ViewportMode
+import com.mapbox.maps.applyDefaultParams
+import com.mapbox.maps.mapbox_maps.mapping.turf.PointDecoder
+import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
-import java.lang.RuntimeException
 
 class MapboxMapFactory(
   private val messenger: BinaryMessenger,
+  private val flutterAssets: FlutterPlugin.FlutterAssets,
   private val lifecycleProvider: MapboxMapsPlugin.LifecycleProvider
 ) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
 
+  @SuppressLint("RestrictedApi")
   override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
     if (context == null) {
       throw RuntimeException("Context is null, can't create MapView!")
     }
     val params = args as Map<String, Any>
-    val resourceOptionsBuilder = ResourceOptions.Builder().applyDefaultParams(context)
     val mapOptionsBuilder = MapOptions.Builder().applyDefaultParams(context)
-    val cameraOptionsBuilder = CameraOptions.Builder()
-    (params["resourceOptions"] as ArrayList<Any?>?)?.let { resourceOptions ->
-      resourceOptions[0]?.let {
-        resourceOptionsBuilder.accessToken(it as String)
-      }
-      resourceOptions[1]?.let {
-        resourceOptionsBuilder.baseURL(it as String)
-      }
-      resourceOptions[2]?.let {
-        resourceOptionsBuilder.dataPath(it as String)
-      }
-      resourceOptions[3]?.let {
-        resourceOptionsBuilder.assetPath(it as String)
-      }
-      resourceOptions[4]?.let {
-        resourceOptionsBuilder.tileStoreUsageMode(TileStoreUsageMode.values()[it as Int])
-      }
-    }
 
     (params["mapOptions"] as ArrayList<Any?>?)?.let { mapOptions ->
       mapOptions[0]?.let {
@@ -57,9 +55,6 @@ class MapboxMapFactory(
         mapOptionsBuilder.crossSourceCollisions(it as Boolean)
       }
       mapOptions[5]?.let {
-        mapOptionsBuilder.optimizeForTerrain(it as Boolean)
-      }
-      mapOptions[6]?.let {
         (it as ArrayList<Double>).let { size ->
           mapOptionsBuilder.size(
             Size(
@@ -69,10 +64,10 @@ class MapboxMapFactory(
           )
         }
       }
-      mapOptions[7]?.let {
+      mapOptions[6]?.let {
         mapOptionsBuilder.pixelRatio((it as Double).toFloat())
       }
-      mapOptions[8]?.let {
+      mapOptions[7]?.let {
         (it as ArrayList<Any?>).let { glyphs ->
           val builder = GlyphsRasterizationOptions.Builder()
           glyphs[1]?.let { fontFamily ->
@@ -88,12 +83,13 @@ class MapboxMapFactory(
       }
     }
 
-    (params["cameraOptions"] as ArrayList<Any?>?)?.let { cameraOptions ->
+    val cameraOptions = (params["cameraOptions"] as ArrayList<Any?>?)?.let { cameraOptions ->
+      val cameraOptionsBuilder = CameraOptions.Builder()
       cameraOptions[4]?.let {
         cameraOptionsBuilder.bearing(it as Double)
       }
-      (cameraOptions[0] as? Map<String, Any>?)?.let {
-        cameraOptionsBuilder.center(it.toPoint())
+      (cameraOptions[0] as? List<Any?>?)?.let {
+        cameraOptionsBuilder.center(PointDecoder.fromList(it))
       }
       cameraOptions[5]?.let {
         cameraOptionsBuilder.pitch(it as Double)
@@ -117,6 +113,7 @@ class MapboxMapFactory(
           )
         )
       }
+      cameraOptionsBuilder.build()
     }
 
     val channelSuffix = params["channelSuffix"] as Int
@@ -124,27 +121,29 @@ class MapboxMapFactory(
     val textureView = params["textureView"] as? Boolean ?: false
     val styleUri = params["styleUri"] as? String ?: Style.MAPBOX_STREETS
     val pluginVersion = params["mapboxPluginVersion"] as String
+    val eventTypes: List<Int> = params["eventTypes"] as List<Int>
+
     val mapInitOptions = MapInitOptions(
       context = context,
-      resourceOptions = resourceOptionsBuilder.build(),
       mapOptions = mapOptionsBuilder.build(),
-      cameraOptions = cameraOptionsBuilder.build(),
+      cameraOptions = cameraOptions,
       textureView = textureView,
       styleUri = styleUri
     )
-    val eventTypes = params["eventTypes"] as? List<String> ?: listOf()
+    mapCounter.increment()
     return MapboxMapController(
       context,
       mapInitOptions,
       lifecycleProvider,
-      eventTypes,
       messenger,
       channelSuffix,
       pluginVersion,
+      eventTypes
     )
   }
 
   companion object {
-    private const val TAG = "MapBoxFactory"
+    @SuppressLint("RestrictedApi")
+    private val mapCounter = FeatureTelemetryCounter.create("maps-mobile/flutter/map")
   }
 }

@@ -75,13 +75,82 @@ enum FillExtrusionTranslateAnchor {
   VIEWPORT,
 }
 
-/// Whether extruded geometries are lit relative to the map or viewport.
-enum Anchor {
-  /// The position of the light source is aligned to the rotation of the map.
-  MAP,
+/// The unit a cache budget should be measured in. Either Tiles or Megabytes.
+enum TileCacheBudgetType {
+  /// A tile cache budget measured in tile units
+  TILES,
 
-  /// The position of the light source is aligned to the rotation of the viewport.
-  VIEWPORT,
+  /// A tile cache budget measured in megabyte units
+  MEGABYTES
+}
+
+/// Defines a resource budget, either in tile units or in megabytes.
+class TileCacheBudget {
+  /// The type of TileCacheBudget, either in Tiles or in Megabytes
+  TileCacheBudgetType type;
+
+  /// The size of the budget.
+  int size;
+
+  /// Returns the TileCacheBudget formatted into an object
+  Object toJson() {
+    switch (type) {
+      case TileCacheBudgetType.MEGABYTES:
+        return {"megabytes": size};
+      case TileCacheBudgetType.TILES:
+        return {"tiles": size};
+    }
+  }
+
+  /// Decodes the TileCacheBudget from and object
+  static TileCacheBudget? decode(Object? budget) {
+    var budgetObject =
+        Map<String, dynamic>.from(budget as Map<dynamic, dynamic>)
+            .cast<String, dynamic>();
+    var budgetType = budgetObject.keys.first;
+    var budgetSize = budgetObject.values.first;
+
+    if (budgetType == 'megabytes') {
+      return TileCacheBudget.inMegabytes(
+          TileCacheBudgetInMegabytes(size: budgetSize));
+    } else if (budgetType == 'tiles') {
+      return TileCacheBudget.inTiles(TileCacheBudgetInTiles(size: budgetSize));
+    } else {
+      return null;
+    }
+  }
+
+  TileCacheBudget.inMegabytes(TileCacheBudgetInMegabytes budget)
+      : type = TileCacheBudgetType.MEGABYTES,
+        size = budget.size;
+
+  TileCacheBudget.inTiles(TileCacheBudgetInTiles budget)
+      : type = TileCacheBudgetType.TILES,
+        size = budget.size;
+
+  TileCacheBudget(this.type, this.size);
+}
+
+/// The description of the raster data layers and the bands contained within the tiles.
+@experimental
+class RasterDataLayer {
+  /// Identifier of the data layer fetched from tiles.
+  String layerId;
+
+  /// An array of bands found in the data layer.
+  List<String> bands;
+
+  Map<String, List<String>> toJson() => {layerId: bands};
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RasterDataLayer &&
+          runtimeType == other.runtimeType &&
+          layerId == other.layerId &&
+          listEquals(bands, other.bands);
+
+  RasterDataLayer(this.layerId, this.bands);
 }
 
 /// Define the duration and delay for a style transition.
@@ -113,6 +182,13 @@ abstract class Layer {
   /// The visibility of the layer.
   Visibility? visibility;
 
+  /// The visibility of the layer.
+  List<Object>? visibilityExpression;
+
+  /// An expression specifying conditions on source features.
+  /// Only features that match the filter are displayed.
+  List<Object>? filter;
+
   /// The minimum zoom level for the layer. At zoom levels less than the minzoom, the layer will be hidden.
   ///
   /// Range:
@@ -127,18 +203,26 @@ abstract class Layer {
   ///       maximum: 24
   double? maxZoom;
 
+  /// The slot this layer is assigned to. If specified, and a slot with that name exists, it will be placed at that position in the layer order.
+  String? slot;
+
   /// Get the type of current layer as a String.
   String getType();
 
-  String _encode();
+  Future<String> _encode();
 
-  Layer({required this.id, this.visibility, this.maxZoom, this.minZoom});
+  Layer(
+      {required String this.id,
+      Visibility? this.visibility,
+      List<Object>? this.visibilityExpression,
+      List<Object>? this.filter,
+      double? this.maxZoom,
+      double? this.minZoom,
+      String? this.slot});
 }
 
 /// Super class for all different types of sources.
 abstract class Source {
-  Map<String, dynamic> _properties = Map();
-
   /// The ID of the Source.
   String id;
 
@@ -157,20 +241,20 @@ abstract class Source {
 /// Extension for StyleManager to add/update/get layers from the current style.
 extension StyleLayer on StyleManager {
   /// Add a layer the the current style.
-  Future<void> addLayer(Layer layer) {
-    var encode = layer._encode();
+  Future<void> addLayer(Layer layer) async {
+    var encode = await layer._encode();
     return addStyleLayer(encode, null);
   }
 
   /// Add a layer to the current style in a specific position.
-  Future<void> addLayerAt(Layer layer, LayerPosition position) {
-    var encode = layer._encode();
+  Future<void> addLayerAt(Layer layer, LayerPosition position) async {
+    var encode = await layer._encode();
     return addStyleLayer(encode, position);
   }
 
-  /// Update an exsiting layer in the style.
-  Future<void> updateLayer(Layer layer) {
-    var encode = layer._encode();
+  /// Update an existing layer in the style.
+  Future<void> updateLayer(Layer layer) async {
+    var encode = await layer._encode();
     return setStyleLayerProperties(layer.id, encode);
   }
 
@@ -261,20 +345,15 @@ extension StyleSource on StyleManager {
       case "raster":
         source = RasterSource(id: sourceId);
         break;
+      case "raster-array":
+        source = RasterArraySource(id: sourceId);
+        break;
       default:
         print("Source type: $type unknown.");
     }
 
     source?.bind(this);
     return Future.value(source);
-  }
-}
-
-/// Extension for StyleManager to set light in the current style.
-extension StyleLight on StyleManager {
-  Future<void> setLight(Light light) {
-    final encode = light.encode();
-    return setStyleLight(encode);
   }
 }
 
@@ -288,16 +367,74 @@ extension StyleColorInt on int {
 }
 
 extension StyleColorList on List {
-  /// Convert the color from a list `[rgba, $R, $G, $B, $A]` to int.
+  /// Convert the color from a color expression to int.
+  /// `rgb`, `rgba`, `hsl` and `hsla` formats are supported.
+  /// Example input: `[rgba, $R, $G, $B, $A]`.
   int toRGBAInt() {
-    final alpha = this.last is num ? ((this.last as num) * 255).toInt() : null;
+    switch ((firstOrNull, length)) {
+      case ("rgb", 4):
+        return _decodeRGBColor().value;
+      case ("rgba", 5):
+        return _decodeRGBAColor().value;
+      case ("hsl", 4):
+        return _decodeHSLColor().value;
+      case ("hsla", 5):
+        return _decodeHSLAColor().value;
+      default:
+        return 0;
+    }
+  }
+
+  Color _decodeHSLColor() {
+    final hue = this[1] is num ? (this[1] as num).toDouble() : null;
+    final saturation = this[2] is num ? (this[2] as num).toDouble() : null;
+    final lightness = this[3] is num ? (this[3] as num).toDouble() : null;
+
+    if (hue != null && saturation != null && lightness != null) {
+      return HSLColor.fromAHSL(1, hue, saturation, lightness).toColor();
+    } else {
+      return Colors.transparent;
+    }
+  }
+
+  Color _decodeHSLAColor() {
+    final hue = this[1] is num ? (this[1] as num).toDouble() : null;
+    final saturation = this[2] is num ? (this[2] as num).toDouble() : null;
+    final lightness = this[3] is num ? (this[3] as num).toDouble() : null;
+    final alpha = this[4] is num ? ((this[4] as num) * 255).toDouble() : null;
+
+    if (hue != null &&
+        saturation != null &&
+        lightness != null &&
+        alpha != null) {
+      return HSLColor.fromAHSL(alpha, hue, saturation, lightness).toColor();
+    } else {
+      return Colors.transparent;
+    }
+  }
+
+  Color _decodeRGBColor() {
     final red = this[1] is num ? (this[1] as num).toInt() : null;
     final green = this[2] is num ? (this[2] as num).toInt() : null;
     final blue = this[3] is num ? (this[3] as num).toInt() : null;
-    if (alpha != null && red != null && green != null && blue != null) {
-      return Color.fromARGB(alpha, red, green, blue).value;
+
+    if (red != null && green != null && blue != null) {
+      return Color.fromARGB(1, red, green, blue);
     } else {
-      return 0;
+      return Colors.transparent;
+    }
+  }
+
+  Color _decodeRGBAColor() {
+    final red = this[1] is num ? (this[1] as num).toInt() : null;
+    final green = this[2] is num ? (this[2] as num).toInt() : null;
+    final blue = this[3] is num ? (this[3] as num).toInt() : null;
+    final alpha = this[4] is num ? ((this[4] as num) * 255).toInt() : null;
+
+    if (alpha != null && red != null && green != null && blue != null) {
+      return Color.fromARGB(alpha, red, green, blue);
+    } else {
+      return Colors.transparent;
     }
   }
 }

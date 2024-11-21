@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:mapbox_maps_example/utils.dart';
-import 'package:turf/helpers.dart';
 
-import 'main.dart';
 import 'page.dart';
 
 class PointAnnotationPage extends ExamplePage {
@@ -39,6 +37,8 @@ class PointAnnotationPageBodyState extends State<PointAnnotationPageBody> {
   int styleIndex = 1;
   _onMapCreated(MapboxMap mapboxMap) {
     this.mapboxMap = mapboxMap;
+    mapboxMap.setCamera(CameraOptions(
+        center: Point(coordinates: Position(0, 0)), zoom: 1, pitch: 0));
     mapboxMap.annotations.createPointAnnotationManager().then((value) async {
       pointAnnotationManager = value;
       final ByteData bytes =
@@ -47,15 +47,15 @@ class PointAnnotationPageBodyState extends State<PointAnnotationPageBody> {
       createOneAnnotation(list);
       var options = <PointAnnotationOptions>[];
       for (var i = 0; i < 5; i++) {
-        options.add(PointAnnotationOptions(
-            geometry: createRandomPoint().toJson(), image: list));
+        options.add(
+            PointAnnotationOptions(geometry: createRandomPoint(), image: list));
       }
       pointAnnotationManager?.createMulti(options);
 
       var carOptions = <PointAnnotationOptions>[];
       for (var i = 0; i < 20; i++) {
         carOptions.add(PointAnnotationOptions(
-            geometry: createRandomPoint().toJson(), iconImage: "car-15"));
+            geometry: createRandomPoint(), iconImage: "car-15"));
       }
       pointAnnotationManager?.createMulti(carOptions);
       pointAnnotationManager
@@ -70,7 +70,7 @@ class PointAnnotationPageBodyState extends State<PointAnnotationPageBody> {
                 coordinates: Position(
               0.381457,
               6.687337,
-            )).toJson(),
+            )),
             textField: "custom-icon",
             textOffset: [0.0, -2.0],
             textColor: Colors.red.value,
@@ -96,11 +96,11 @@ class PointAnnotationPageBodyState extends State<PointAnnotationPageBody> {
       child: Text('update a point annotation'),
       onPressed: () {
         if (pointAnnotation != null) {
-          var point = Point.fromJson((pointAnnotation!.geometry)!.cast());
+          var point = pointAnnotation!.geometry;
           var newPoint = Point(
               coordinates: Position(
                   point.coordinates.lng + 1.0, point.coordinates.lat + 1.0));
-          pointAnnotation?.geometry = newPoint.toJson();
+          pointAnnotation?.geometry = newPoint;
           pointAnnotationManager?.update(pointAnnotation!);
         }
       },
@@ -140,10 +140,8 @@ class PointAnnotationPageBodyState extends State<PointAnnotationPageBody> {
 
   @override
   Widget build(BuildContext context) {
-    final MapWidget mapWidget = MapWidget(
-        key: ValueKey("mapWidget"),
-        resourceOptions: ResourceOptions(accessToken: MapsDemo.ACCESS_TOKEN),
-        onMapCreated: _onMapCreated);
+    final MapWidget mapWidget =
+        MapWidget(key: ValueKey("mapWidget"), onMapCreated: _onMapCreated);
 
     final List<Widget> listViewChildren = <Widget>[];
 

@@ -8,10 +8,6 @@ import 'package:mapbox_maps_example/empty_map_widget.dart' as app;
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<void> addDelay(int ms) async {
-    await Future<void>.delayed(Duration(milliseconds: ms));
-  }
-
   testWidgets('create PolygonAnnotation', (WidgetTester tester) async {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
@@ -28,7 +24,7 @@ void main() {
     ]);
 
     var polygonAnnotationOptions = PolygonAnnotationOptions(
-      geometry: geometry.toJson(),
+      geometry: geometry,
       fillSortKey: 1.0,
       fillColor: Colors.red.value,
       fillOpacity: 1.0,
@@ -36,7 +32,7 @@ void main() {
       fillPattern: "abc",
     );
     final annotation = await manager.create(polygonAnnotationOptions);
-    var polygon = Polygon.fromJson((annotation.geometry)!.cast());
+    var polygon = annotation.geometry;
     expect(1, polygon.coordinates.length);
     var points = polygon.coordinates.first;
     expect(4, points.length);
@@ -68,16 +64,16 @@ void main() {
     ]);
 
     var polygonAnnotationOptions = PolygonAnnotationOptions(
-      geometry: geometry.toJson(),
+      geometry: geometry,
     );
     final annotation = await manager.create(polygonAnnotationOptions);
-    var polygon = Polygon.fromJson((annotation.geometry)!.cast());
+    var polygon = annotation.geometry;
     var newPolygon = Polygon(
         coordinates: polygon.coordinates
             .map((e) =>
                 e.map((e) => Position(e.lng + 1.0, e.lat + 1.0)).toList())
             .toList());
-    annotation.geometry = newPolygon.toJson();
+    annotation.geometry = newPolygon;
     await manager.update(annotation);
     await manager.delete(annotation);
 
@@ -86,7 +82,6 @@ void main() {
     }
 
     await manager.deleteAll();
-    await addDelay(1000);
   });
 }
 // End of generated file.

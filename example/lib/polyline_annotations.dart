@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:mapbox_maps_example/utils.dart';
-import 'package:turf/helpers.dart';
 
-import 'main.dart';
 import 'page.dart';
 
 class PolylineAnnotationPage extends ExamplePage {
@@ -41,6 +39,8 @@ class PolylineAnnotationPageBodyState
 
   _onMapCreated(MapboxMap mapboxMap) {
     this.mapboxMap = mapboxMap;
+    mapboxMap.setCamera(CameraOptions(
+        center: Point(coordinates: Position(0, 0)), zoom: 1, pitch: 0));
     mapboxMap.annotations.createPolylineAnnotationManager().then((value) {
       polylineAnnotationManager = value;
       createOneAnnotation();
@@ -51,7 +51,7 @@ class PolylineAnnotationPageBodyState
 
       polylineAnnotationManager?.createMulti(positions
           .map((e) => PolylineAnnotationOptions(
-              geometry: LineString(coordinates: e).toJson(),
+              geometry: LineString(coordinates: e),
               lineColor: createRandomColor()))
           .toList());
       polylineAnnotationManager
@@ -74,13 +74,12 @@ class PolylineAnnotationPageBodyState
       child: Text('update a polyline annotation'),
       onPressed: () {
         if (polylineAnnotation != null) {
-          var lineString =
-              LineString.fromJson((polylineAnnotation!.geometry)!.cast());
+          var lineString = polylineAnnotation!.geometry;
           var newlineString = LineString(
               coordinates: lineString.coordinates
                   .map((e) => Position(e.lng + 1.0, e.lat + 1.0))
                   .toList());
-          polylineAnnotation?.geometry = newlineString.toJson();
+          polylineAnnotation?.geometry = newlineString;
           polylineAnnotationManager?.update(polylineAnnotation!);
         }
       },
@@ -108,7 +107,7 @@ class PolylineAnnotationPageBodyState
                 10.0,
                 20.0,
               )
-            ]).toJson(),
+            ]),
             lineColor: Colors.red.value,
             lineWidth: 2))
         .then((value) => polylineAnnotation = value);
@@ -136,10 +135,8 @@ class PolylineAnnotationPageBodyState
 
   @override
   Widget build(BuildContext context) {
-    final MapWidget mapWidget = MapWidget(
-        key: ValueKey("mapWidget"),
-        resourceOptions: ResourceOptions(accessToken: MapsDemo.ACCESS_TOKEN),
-        onMapCreated: _onMapCreated);
+    final MapWidget mapWidget =
+        MapWidget(key: ValueKey("mapWidget"), onMapCreated: _onMapCreated);
 
     final List<Widget> listViewChildren = <Widget>[];
 
