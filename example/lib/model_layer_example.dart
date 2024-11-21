@@ -2,30 +2,21 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'page.dart';
+import 'example.dart';
 
-class ModelLayerPage extends ExamplePage {
-  ModelLayerPage() : super(const Icon(Icons.map), 'Model layer');
+class ModelLayerExample extends StatefulWidget implements Example {
+  @override
+  final Widget leading = const Icon(Icons.view_in_ar);
+  @override
+  final String title = 'Display a 3D model in a model layer';
+  @override
+  final String subtitle = 'Showcase the usage of a 3D model layer.';
 
   @override
-  Widget build(BuildContext context) {
-    return ModelLayerWidget();
-  }
+  State<StatefulWidget> createState() => _ModelLayerExampleState();
 }
 
-class ModelLayerWidget extends StatefulWidget {
-  ModelLayerWidget();
-
-  final _state = _ModelLayerState();
-  MapboxMap? getMapboxMap() => _state.mapboxMap;
-
-  @override
-  State<StatefulWidget> createState() {
-    return _state;
-  }
-}
-
-class _ModelLayerState extends State<ModelLayerWidget> {
+class _ModelLayerExampleState extends State<ModelLayerExample> {
   MapboxMap? mapboxMap;
 
   var position = Position(24.9458, 60.17180);

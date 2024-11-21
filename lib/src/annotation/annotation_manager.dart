@@ -1,9 +1,9 @@
 part of mapbox_maps_flutter;
 
-class _AnnotationManager {
+class AnnotationManager {
   final _MapboxMapsPlatform _mapboxMapsPlatform;
 
-  _AnnotationManager({required _MapboxMapsPlatform mapboxMapsPlatform})
+  AnnotationManager._({required _MapboxMapsPlatform mapboxMapsPlatform})
       : _mapboxMapsPlatform = mapboxMapsPlatform;
 
   /// Create a [PointAnnotationManager] to add/remove/update [PointAnnotation]s on the map.
@@ -14,8 +14,10 @@ class _AnnotationManager {
       {String? id, String? below}) async {
     return _mapboxMapsPlatform
         .createAnnotationManager('point', id: id, belowLayerId: below)
-        .then((value) => PointAnnotationManager(
-            id: value, messenger: _mapboxMapsPlatform.binaryMessenger));
+        .then((value) => PointAnnotationManager._(
+            id: value,
+            messenger: _mapboxMapsPlatform.binaryMessenger,
+            channelSuffix: _mapboxMapsPlatform.channelSuffix.toString()));
   }
 
   /// Create a [CircleAnnotationManager] to add/remove/update [CircleAnnotation]s on the map.
@@ -26,8 +28,10 @@ class _AnnotationManager {
       {String? id, String? below}) async {
     return _mapboxMapsPlatform
         .createAnnotationManager('circle', id: id, belowLayerId: below)
-        .then((value) => CircleAnnotationManager(
-            id: value, messenger: _mapboxMapsPlatform.binaryMessenger));
+        .then((value) => CircleAnnotationManager._(
+            id: value,
+            messenger: _mapboxMapsPlatform.binaryMessenger,
+            channelSuffix: _mapboxMapsPlatform.channelSuffix.toString()));
   }
 
   /// Create a [PolylineAnnotationManager] to add/remove/update [PolylineAnnotation]s on the map.
@@ -38,8 +42,10 @@ class _AnnotationManager {
       {String? id, String? below}) async {
     return _mapboxMapsPlatform
         .createAnnotationManager('polyline', id: id, belowLayerId: below)
-        .then((value) => PolylineAnnotationManager(
-            id: value, messenger: _mapboxMapsPlatform.binaryMessenger));
+        .then((value) => PolylineAnnotationManager._(
+            id: value,
+            messenger: _mapboxMapsPlatform.binaryMessenger,
+            channelSuffix: _mapboxMapsPlatform.channelSuffix.toString()));
   }
 
   /// Create a [PolygonAnnotationManager] to add/remove/update [PolygonAnnotation]s on the map.
@@ -50,8 +56,10 @@ class _AnnotationManager {
       {String? id, String? below}) async {
     return _mapboxMapsPlatform
         .createAnnotationManager('polygon', id: id, belowLayerId: below)
-        .then((value) => PolygonAnnotationManager(
-            id: value, messenger: _mapboxMapsPlatform.binaryMessenger));
+        .then((value) => PolygonAnnotationManager._(
+            id: value,
+            messenger: _mapboxMapsPlatform.binaryMessenger,
+            channelSuffix: _mapboxMapsPlatform.channelSuffix.toString()));
   }
 
   /// Remove an [AnnotationManager] and all the annotations created by it.
@@ -67,7 +75,7 @@ class _AnnotationManager {
 
 /// The super class for all AnnotationManagers.
 class BaseAnnotationManager {
-  BaseAnnotationManager(
+  BaseAnnotationManager._(
       {required String id, required BinaryMessenger messenger})
       : this.id = id,
         _messenger = messenger;

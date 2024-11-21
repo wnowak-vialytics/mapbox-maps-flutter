@@ -8,6 +8,7 @@ final _TileStoreInstanceManager _tileStoreInstanceManager =
 /// app developer to set the disk quota. The rest of TileStore API is intended for native SDK consumption only.
 final class TileStore {
   final int _suffix = _suffixesRegistry.getSuffix();
+  String get _messageChannel => "tilestore/${_suffix.toString()}";
   static final Finalizer<int> _finalizer = Finalizer((suffix) {
     try {
       _tileStoreInstanceManager
@@ -19,9 +20,9 @@ final class TileStore {
   late final _TileStore _api;
 
   TileStore._() {
-    final messenger =
-        ProxyBinaryMessenger(suffix: "tilestore/${_suffix.toString()}");
-    _api = _TileStore(binaryMessenger: messenger);
+    _api = _TileStore(
+        binaryMessenger: ServicesBinding.instance.defaultBinaryMessenger,
+        messageChannelSuffix: _messageChannel);
   }
 
   /// Returns a shared [TileStore] at the given storage [filePath].
@@ -31,7 +32,7 @@ final class TileStore {
   static Future<TileStore> createAt(Uri filePath) async {
     final tileStore = TileStore._();
     await _tileStoreInstanceManager.setupTileStore(
-        "tilestore/${tileStore._suffix.toString()}", filePath.path);
+        tileStore._messageChannel, filePath.path);
     _finalizer.attach(tileStore, tileStore._suffix, detach: tileStore);
     return tileStore;
   }
@@ -41,7 +42,7 @@ final class TileStore {
   static Future<TileStore> createDefault() async {
     final tileStore = TileStore._();
     await _tileStoreInstanceManager.setupTileStore(
-        "tilestore/${tileStore._suffix.toString()}", null);
+        tileStore._messageChannel, null);
     _finalizer.attach(tileStore, tileStore._suffix, detach: tileStore);
     return tileStore;
   }
@@ -87,8 +88,8 @@ final class TileStore {
       OnTileRegionLoadProgressListener? progressListener) async {
     if (progressListener != null) {
       await _api.addTileRegionLoadProgressListener(id);
-      final eventChannel =
-          EventChannel("com.mapbox.maps.flutter/tilestore/tile-region-${id}");
+      final eventChannel = EventChannel(
+          "com.mapbox.maps.flutter/${_messageChannel}/tile-region-${id}");
       eventChannel.receiveBroadcastStream().listen((event) {
         progressListener(TileRegionLoadProgress.decode(event));
       });
@@ -118,7 +119,7 @@ final class TileStore {
     if (progressListener != null) {
       await _api.addTileRegionEstimateProgressListener(id);
       final eventChannel = EventChannel(
-          "com.mapbox.maps.flutter/tilestore/tile-region-estimate-${id}");
+          "com.mapbox.maps.flutter/${_messageChannel}/tile-region-estimate-${id}");
       eventChannel.receiveBroadcastStream().listen((event) {
         progressListener(TileRegionEstimateProgress.decode(event));
       });
@@ -161,5 +162,40 @@ final class TileStore {
   /// @param id: The tile region id.
   Future<TileRegion> removeRegion(String id) {
     return _api.removeRegion(id);
+  }
+
+  /// Sets the maximum amount of bytes [TileStore] can use to store files.
+  /// If the new value causes the quota to be exceed, request will fail and data will be evicted to enforce the quota.
+  /// Accepts a (positive) number of bytes, or null for resetting to the default value.
+  void setDiskQuota(int? quota, {TileDataDomain? domain = null}) {
+    _api.setOptionForKey(_TileStoreOptionsKey.DISK_QUOTA, domain, quota);
+  }
+
+  /// Sets the base URL to use for requests to the Mapbox API. Defaults to "https://api.mapbox.com".
+  /// Accepts a string, or null for resetting to the default value.
+  void setMapboxAPIUrl(Uri? url, {TileDataDomain? domain = null}) {
+    _api.setOptionForKey(_TileStoreOptionsKey.MAPBOX_API_URL, domain, url);
+  }
+
+  /// Sets the URL template for making tile requests. Defaults to the Mapbox API endpoints.
+  /// Accepts a string, or null for resetting to the default value.
+  ///
+  /// The template string for the URL, which may contain the following placeholders:
+  /// - {mapbox_api_url}: The globally set Mapbox API URL, or the default endpoint if none is set.
+  /// - {mapbox_access_token}: The access token, or an empty string if none is set.
+  /// - {mapbox_sku_token}: The Mapbox SKU token for the tile.
+  /// - {domain}: A lowercase string representing the data domain, e.g. 'maps', or 'navigation'.
+  /// - {dataset}: The dataset of the tile to be loaded, e.g. 'mapbox.mapbox-streets-v8'.
+  /// - {version}: The dataset version of the tile to be loaded, if applicable.
+  /// - {level}: The level of the Navigation tile to be loaded.
+  /// - {graph_id}: The graph ID suffix of the Navigation tile to be loaded. E.g. '002/958/221'
+  /// - {z}: The zoom level of the Map tile to be loaded.
+  /// - {x}: The x coordinate of the Map tile to be loaded.
+  /// - {y}: The y coordinate of the Map tile to be loaded.
+  /// - {z_min}: The zoom range minimum of the Map tile to be loaded.
+  /// - {z_max}: The zoom range maximum of the Map tile to be loaded.
+  void setTileUrlTemplate(String? template, {TileDataDomain? domain = null}) {
+    _api.setOptionForKey(
+        _TileStoreOptionsKey.TILE_URL_TEMPLATE, domain, template);
   }
 }

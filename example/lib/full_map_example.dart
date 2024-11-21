@@ -1,24 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'page.dart';
+import 'example.dart';
 
-class FullMapPage extends ExamplePage {
-  FullMapPage() : super(const Icon(Icons.map), 'Full screen map');
+class FullMapExample extends StatefulWidget implements Example {
+  @override
+  final Widget leading = const Icon(Icons.map);
+  @override
+  final String title = 'Full screen map';
+  @override
+  final String? subtitle = null;
 
   @override
-  Widget build(BuildContext context) {
-    return const FullMap();
-  }
+  State createState() => FullMapExampleState();
 }
 
-class FullMap extends StatefulWidget {
-  const FullMap();
-
-  @override
-  State createState() => FullMapState();
-}
-
-class FullMapState extends State<FullMap> {
+class FullMapExampleState extends State<FullMapExample> {
   MapboxMap? mapboxMap;
   var isLight = true;
 
@@ -36,7 +32,7 @@ class FullMapState extends State<FullMap> {
   }
 
   _onCameraChangeListener(CameraChangedEventData data) {
-    print("CameraChangedEventData: timestamp: ${data.timestamp}");
+    print("CameraChangedEventData: ${data.debugInfo}");
   }
 
   _onResourceRequestListener(ResourceEventData data) {
@@ -140,5 +136,17 @@ class FullMapState extends State<FullMap> {
           onResourceRequestListener: _onResourceRequestListener,
           onLongTapListener: (coordinate) {},
         ));
+  }
+}
+
+extension on CameraChangedEventData {
+  String get debugInfo {
+    return "timestamp ${DateTime.fromMicrosecondsSinceEpoch(timestamp)}, camera: ${cameraState.debugInfo}";
+  }
+}
+
+extension on CameraState {
+  String get debugInfo {
+    return "lat: ${center.coordinates.lat}, lng: ${center.coordinates.lng}, zoom: ${zoom}, bearing: ${bearing}, pitch: ${pitch}";
   }
 }

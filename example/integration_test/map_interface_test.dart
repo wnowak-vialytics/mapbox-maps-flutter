@@ -5,10 +5,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'package:mapbox_maps_example/empty_map_widget.dart' as app;
+import 'empty_map_widget.dart' as app;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('styleGlyphURL', (WidgetTester tester) async {
+    final mapFuture = app.main();
+    await tester.pumpAndSettle();
+    final mapboxMap = await mapFuture;
+    final styleGlyphURL = 'test://test/test/{fontstack}/{range}.pbf';
+
+    await mapboxMap.setStyleGlyphURL(styleGlyphURL);
+    expect(await mapboxMap.styleGlyphURL(), styleGlyphURL);
+  });
 
   testWidgets('loadStyleURI', (WidgetTester tester) async {
     final mapFuture = app.main();
@@ -118,8 +128,10 @@ void main() {
       expect(() async => await mapboxMap.getSize(), throwsPlatformException);
     } else {
       var size = await mapboxMap.getSize();
-      expect(size.width, closeTo(tester.binding.renderView.size.width, 1));
-      expect(size.height, closeTo(tester.binding.renderView.size.height, 1));
+      expect(
+          size.width, closeTo(tester.binding.renderViews.first.size.width, 1));
+      expect(size.height,
+          closeTo(tester.binding.renderViews.first.size.height, 1));
     }
   });
 
@@ -158,7 +170,7 @@ void main() {
     expect(options.viewportMode, ViewportMode.DEFAULT);
 
     expect(options.crossSourceCollisions, true);
-    expect(options.pixelRatio, tester.binding.window.devicePixelRatio);
+    expect(options.pixelRatio, tester.view.devicePixelRatio);
     expect(options.glyphsRasterizationOptions, isNull);
     expect(options.size!.width, isNotNull);
     expect(options.size!.height, isNotNull);
@@ -199,11 +211,10 @@ void main() {
     final mapFuture = app.main();
     await tester.pumpAndSettle();
     final mapboxMap = await mapFuture;
-    await mapboxMap.setDebug(
-        [MapDebugOptions(data: MapDebugOptionsData.TILE_BORDERS)], true);
-    var debugOptions = await mapboxMap.getDebug();
+    await mapboxMap.setDebugOptions([MapWidgetDebugOptions.tileBorders]);
+    var debugOptions = await mapboxMap.getDebugOptions();
     expect(debugOptions.length, 1);
-    expect(debugOptions.first!.data, MapDebugOptionsData.TILE_BORDERS);
+    expect(debugOptions.first, MapWidgetDebugOptions.tileBorders);
   });
 
   testWidgets('featureState', (WidgetTester tester) async {
@@ -325,8 +336,7 @@ void main() {
     var screenBox = ScreenBox(
         min: ScreenCoordinate(x: 0.0, y: 0.0),
         max: ScreenCoordinate(x: 500.0, y: 1000.0));
-    var renderedQueryGeometry = RenderedQueryGeometry(
-        value: json.encode(screenBox.encode()), type: Type.SCREEN_BOX);
+    var renderedQueryGeometry = RenderedQueryGeometry.fromScreenBox(screenBox);
     var query = await mapboxMap.queryRenderedFeatures(renderedQueryGeometry,
         RenderedQueryOptions(layerIds: ['points'], filter: null));
     expect(query.length, greaterThan(0));
@@ -334,18 +344,15 @@ void main() {
     expect(query[0]!.queriedFeature.feature['id'], 'point');
 
     query = await mapboxMap.queryRenderedFeatures(
-        RenderedQueryGeometry(
-            value: json.encode(ScreenCoordinate(x: 0.0, y: 0.0).encode()),
-            type: Type.SCREEN_COORDINATE),
+        RenderedQueryGeometry.fromScreenCoordinate(
+            ScreenCoordinate(x: 0.0, y: 0.0)),
         RenderedQueryOptions(layerIds: ['points'], filter: null));
     expect(query.length, 0);
     query = await mapboxMap.queryRenderedFeatures(
-        RenderedQueryGeometry(
-            value: json.encode([
-              ScreenCoordinate(x: 0.0, y: 0.0).encode(),
-              ScreenCoordinate(x: 1.0, y: 1.0).encode()
-            ]),
-            type: Type.LIST),
+        RenderedQueryGeometry.fromList([
+          ScreenCoordinate(x: 0.0, y: 0.0),
+          ScreenCoordinate(x: 1.0, y: 1.0),
+        ]),
         RenderedQueryOptions(layerIds: ['points'], filter: null));
     expect(query.length, 0);
   });

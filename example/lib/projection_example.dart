@@ -1,25 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'page.dart';
+import 'example.dart';
 
-class ProjectionPage extends ExamplePage {
-  ProjectionPage() : super(const Icon(Icons.map), 'Projection interface');
+class ProjectionExample extends StatefulWidget implements Example {
+  @override
+  final Widget leading = const Icon(Icons.map);
+  @override
+  final String title = 'Projection interface';
+  @override
+  final String? subtitle = null;
 
   @override
-  Widget build(BuildContext context) {
-    return const ProjectionPageBody();
-  }
+  State<StatefulWidget> createState() => ProjectionExampleState();
 }
 
-class ProjectionPageBody extends StatefulWidget {
-  const ProjectionPageBody();
-
-  @override
-  State<StatefulWidget> createState() => ProjectionPageBodyState();
-}
-
-class ProjectionPageBodyState extends State<ProjectionPageBody> {
-  ProjectionPageBodyState();
+class ProjectionExampleState extends State<ProjectionExample> {
+  ProjectionExampleState();
 
   MapboxMap? mapboxMap;
 
@@ -81,7 +77,8 @@ class ProjectionPageBodyState extends State<ProjectionPageBody> {
                 ProjectedMeters(northing: 1.0, easting: 1.0))
             .then(
                 (value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text("coordinates: ${value.coordinates}"),
+                      content: Text(
+                          "coordinates: ${value.coordinates.lat}, ${value.coordinates.lng}"),
                       backgroundColor: Theme.of(context).primaryColor,
                       duration: Duration(seconds: 2),
                     )));
@@ -97,7 +94,8 @@ class ProjectionPageBodyState extends State<ProjectionPageBody> {
             .unproject(MercatorCoordinate(x: 1.0, y: 1.0), 16)
             .then(
                 (value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text("coordinates: ${value.coordinates}"),
+                      content: Text(
+                          "coordinates: ${value.coordinates.lat}, ${value.coordinates.lng}"),
                       backgroundColor: Theme.of(context).primaryColor,
                       duration: Duration(seconds: 2),
                     )));

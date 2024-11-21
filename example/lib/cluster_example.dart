@@ -1,28 +1,22 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'page.dart';
+import 'example.dart';
 
-class StyleClustersPage extends ExamplePage {
-  StyleClustersPage() : super(const Icon(Icons.map), 'StyleClusters');
+class StyleClustersExample extends StatefulWidget implements Example {
+  @override
+  final Widget leading = const Icon(Icons.map);
+  @override
+  final String title = 'StyleClusters';
+  @override
+  final String? subtitle = null;
 
   @override
-  Widget build(BuildContext context) {
-    return const StyleClustersPageBody();
-  }
+  State<StatefulWidget> createState() => StyleClustersExampleState();
 }
 
-class StyleClustersPageBody extends StatefulWidget {
-  const StyleClustersPageBody();
-
-  @override
-  State<StatefulWidget> createState() => StyleClustersPageBodyState();
-}
-
-class StyleClustersPageBodyState extends State<StyleClustersPageBody> {
-  StyleClustersPageBodyState();
+class StyleClustersExampleState extends State<StyleClustersExample> {
+  StyleClustersExampleState();
 
   MapboxMap? mapboxMap;
 
@@ -36,6 +30,9 @@ class StyleClustersPageBodyState extends State<StyleClustersPageBody> {
         )),
         zoom: 1,
         pitch: 0));
+  }
+
+  _onStyleLoadedCallback(StyleLoadedEventData data) async {
     _addLayerAndSource();
   }
 
@@ -84,11 +81,11 @@ class StyleClustersPageBodyState extends State<StyleClustersPageBody> {
     return TextButton(
       child: Text('queryRenderedFeatures'),
       onPressed: () {
-        var screenBox = ScreenBox(
+        final screenBox = ScreenBox(
             min: ScreenCoordinate(x: 0.0, y: 0.0),
             max: ScreenCoordinate(x: 150.0, y: 510.0));
-        var renderedQueryGeometry = RenderedQueryGeometry(
-            value: json.encode(screenBox.encode()), type: Type.SCREEN_BOX);
+        final renderedQueryGeometry =
+            RenderedQueryGeometry.fromScreenBox(screenBox);
         mapboxMap
             ?.queryRenderedFeatures(renderedQueryGeometry,
                 RenderedQueryOptions(layerIds: ['clusters'], filter: null))
@@ -166,8 +163,10 @@ class StyleClustersPageBodyState extends State<StyleClustersPageBody> {
 
   @override
   Widget build(BuildContext context) {
-    final MapWidget mapWidget =
-        MapWidget(key: ValueKey("mapWidget"), onMapCreated: _onMapCreated);
+    final MapWidget mapWidget = MapWidget(
+        key: ValueKey("mapWidget"),
+        onMapCreated: _onMapCreated,
+        onStyleLoadedListener: _onStyleLoadedCallback);
 
     final List<Widget> listViewChildren = <Widget>[];
 

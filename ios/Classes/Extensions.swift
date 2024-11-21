@@ -5,9 +5,50 @@ import Flutter
 
 let COORDINATES = "coordinates"
 
+#if hasFeature(RetroactiveAttribute)
+extension FlutterError: @retroactive Error { }
+#else
 extension FlutterError: Error { }
+#endif
 
 // FLT to Mapbox
+
+extension [_MapWidgetDebugOptions] {
+    func toDebugOptions() -> MapViewDebugOptions {
+        return reduce(into: []) { partialResult, option in
+            switch option {
+            case .tileBorders: partialResult.insert(.tileBorders)
+            case .parseStatus: partialResult.insert(.parseStatus)
+            case .timestamps: partialResult.insert(.timestamps)
+            case .collision: partialResult.insert(.collision)
+            case .overdraw: partialResult.insert(.overdraw)
+            case .stencilClip: partialResult.insert(.stencilClip)
+            case .depthBuffer: partialResult.insert(.depthBuffer)
+            case .modelBounds: partialResult.insert(.modelBounds)
+            case .light: partialResult.insert(.light)
+            case .camera: partialResult.insert(.camera)
+            case .padding: partialResult.insert(.padding)
+            case .terrainWireframe, .layers2DWireframe, .layers3DWireframe: break
+            }
+        }
+    }
+}
+
+extension MapOptions {
+    func toMapOptions() -> MapboxMaps.MapOptions {
+        let defaultOptions = MapboxMaps.MapOptions()
+        return MapboxMaps.MapOptions(
+            constrainMode: constrainMode?.toConstrainMode() ?? .heightOnly,
+            viewportMode: viewportMode?.toViewportMode() ?? .default,
+            orientation: orientation?.toNorthOrientation() ?? .upwards,
+            crossSourceCollisions: crossSourceCollisions ?? defaultOptions.crossSourceCollisions,
+            size: size?.toCGSize() ?? defaultOptions.size,
+            pixelRatio: pixelRatio,
+            glyphsRasterizationOptions: glyphsRasterizationOptions?.toGlyphsRasterizationOptions() ?? MapboxMaps.GlyphsRasterizationOptions()
+        )
+    }
+
+}
 
 extension GlyphsRasterizationMode {
     func toGlyphsRasterizationMode() -> MapboxMaps.GlyphsRasterizationMode {
@@ -222,6 +263,24 @@ extension MbxEdgeInsets {
 
 // Mapbox to FLT
 
+extension MapViewDebugOptions {
+    func toFLTDebugOptions() -> [_MapWidgetDebugOptions] {
+        var debugOptions = [_MapWidgetDebugOptions]()
+        if contains(.tileBorders) { debugOptions.append(.tileBorders) }
+        if contains(.parseStatus) { debugOptions.append(.parseStatus) }
+        if contains(.timestamps) { debugOptions.append(.timestamps) }
+        if contains(.collision) { debugOptions.append(.collision) }
+        if contains(.overdraw) { debugOptions.append(.overdraw) }
+        if contains(.stencilClip) { debugOptions.append(.stencilClip) }
+        if contains(.depthBuffer) { debugOptions.append(.depthBuffer) }
+        if contains(.modelBounds) { debugOptions.append(.modelBounds) }
+        if contains(.light) { debugOptions.append(.light) }
+        if contains(.camera) { debugOptions.append(.camera) }
+        if contains(.padding) { debugOptions.append(.padding) }
+        return debugOptions
+    }
+}
+
 extension MapboxMaps.CanonicalTileID {
     func toFLTCanonicalTileID() -> CanonicalTileID {
         return CanonicalTileID(z: Int64(z), x: Int64(x), y: Int64(y))
@@ -378,7 +437,11 @@ extension CGPoint {
 extension MapboxMaps.MapContentGestureContext {
 
     func toFLTMapContentGestureContext() -> MapContentGestureContext {
-        MapContentGestureContext(touchPosition: point.toFLTScreenCoordinate(), point: Point(coordinate))
+        MapContentGestureContext(
+            touchPosition: point.toFLTScreenCoordinate(),
+            point: Point(coordinate),
+            gestureState: .ended
+        )
     }
 }
 
@@ -551,6 +614,7 @@ func convertDictionaryToString(dict: [String?: Any?]?) -> String {
 }
 
 func convertDictionaryToGeometry(dict: [String?: Any?]?) -> Geometry? {
+    guard let dict else { return nil }
     do {
         let jsonData = try JSONSerialization.data(withJSONObject: dict, options: JSONSerialization.WritingOptions.init(rawValue: 0))
         let geometry = try JSONDecoder().decode(Geometry.self, from: jsonData)
@@ -829,6 +893,21 @@ extension Date {
     }
 }
 
+extension UIGestureRecognizer.State {
+    func toFLTGestureState() -> GestureState {
+        switch self {
+        case .possible, .began:
+            return .started
+        case .changed:
+            return .changed
+        case .ended, .cancelled, .failed, .recognized:
+            return .ended
+        @unknown default:
+            return .ended
+        }
+    }
+}
+
 // MARK: Offline
 
 extension MapboxCoreMaps.StylePackLoadOptions {
@@ -877,25 +956,15 @@ extension MapboxCoreMaps.StylePackLoadProgress {
 
 extension MapboxCoreMaps.TilesetDescriptorOptions {
 
-    convenience init(fltValue: TilesetDescriptorOptions) {
-        if let pixelRatio = fltValue.pixelRatio {
-            self.init(
-                styleURI: fltValue.styleURI,
-                minZoom: UInt8(fltValue.minZoom),
-                maxZoom: UInt8(fltValue.maxZoom),
-                pixelRatio: Float(pixelRatio),
-                tilesets: fltValue.tilesets?.compacted(),
-                stylePack: fltValue.stylePackOptions.flatMap(MapboxCoreMaps.StylePackLoadOptions.init(fltValue:)),
-                extraOptions: fltValue.extraOptions)
-        } else {
-            self.init(
-                styleURI: fltValue.styleURI,
-                minZoom: UInt8(fltValue.minZoom),
-                maxZoom: UInt8(fltValue.maxZoom),
-                tilesets: fltValue.tilesets?.compacted(),
-                stylePack: fltValue.stylePackOptions.flatMap(MapboxCoreMaps.StylePackLoadOptions.init(fltValue:)),
-                extraOptions: fltValue.extraOptions)
-        }
+    convenience init?(fltValue: TilesetDescriptorOptions) {
+        guard let styleURI = StyleURI(rawValue: fltValue.styleURI) else { return nil }
+        self.init(
+            styleURI: styleURI,
+            zoomRange: UInt8(fltValue.minZoom)...UInt8(fltValue.maxZoom),
+            pixelRatio: fltValue.pixelRatio.map(Float.init),
+            tilesets: fltValue.tilesets?.compacted(),
+            stylePackOptions: fltValue.stylePackOptions.flatMap(MapboxCoreMaps.StylePackLoadOptions.init(fltValue:)),
+            extraOptions: fltValue.extraOptions)
     }
 }
 
@@ -955,6 +1024,47 @@ extension MapboxCommon.TileRegionEstimateProgress {
             erroredResourceCount: Int64(erroredResourceCount))
     }
 }
+
+extension MapboxCommon.NetworkRestriction {
+
+    init(fltValue: NetworkRestriction) {
+        switch fltValue {
+        case .nONE:
+            self = .none
+        case .dISALLOWEXPENSIVE:
+            self = .disallowExpensive
+        case .dISALLOWALL:
+            self = .disallowAll
+        }
+    }
+}
+
+extension _TileStoreOptionsKey {
+
+    func toTileStoreOptionsKey() -> String {
+        switch self {
+        case .dISKQUOTA:
+            return TileStoreOptions.diskQuota
+        case .mAPBOXAPIURL:
+            return TileStoreOptions.mapboxAPIURL
+        case .tILEURLTEMPLATE:
+            return TileStoreOptions.tileURLTemplate
+        }
+    }
+}
+
+extension TileDataDomain {
+
+    func toTileDataDomain() -> MapboxCommon.TileDataDomain {
+        switch self {
+        case .mAPS: return .maps
+        case .nAVIGATION: return .navigation
+        case .sEARCH: return .search
+        case .aDAS: return .adas
+        }
+    }
+}
+
 // MARK: Result
 extension Result where Failure == any Error {
     init(code: String, catchingFlutter body: () throws -> Success) {

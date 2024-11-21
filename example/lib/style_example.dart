@@ -5,26 +5,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show ByteData, rootBundle;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
-import 'page.dart';
+import 'example.dart';
 
-class StylePage extends ExamplePage {
-  StylePage() : super(const Icon(Icons.map), 'Style interface');
+class StyleExample extends StatefulWidget implements Example {
+  @override
+  final Widget leading = const Icon(Icons.map);
+  @override
+  final String title = 'Style interface';
+  @override
+  final String? subtitle = null;
 
   @override
-  Widget build(BuildContext context) {
-    return const StylePageBody();
-  }
+  State<StatefulWidget> createState() => StyleExampleState();
 }
 
-class StylePageBody extends StatefulWidget {
-  const StylePageBody();
-
-  @override
-  State<StatefulWidget> createState() => StylePageBodyState();
-}
-
-class StylePageBodyState extends State<StylePageBody> {
-  StylePageBodyState();
+class StyleExampleState extends State<StyleExample> {
+  StyleExampleState();
 
   MapboxMap? mapboxMap;
   var mapProject = StyleProjectionName.globe;
@@ -247,11 +243,12 @@ class StylePageBodyState extends State<StylePageBody> {
     return TextButton(
       child: Text('getStyleLayers'),
       onPressed: () {
-        mapboxMap?.style
-            .getStyleLayers()
-            .then((value) => value.forEach((element) {
-                  print(element?.id);
-                }));
+        mapboxMap?.style.getStyleLayers().then(
+            (value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text("${value.map((e) => e?.id)}"),
+                  backgroundColor: Theme.of(context).primaryColor,
+                  duration: Duration(seconds: 3),
+                )));
       },
     );
   }
@@ -390,7 +387,8 @@ class StylePageBodyState extends State<StylePageBody> {
       onPressed: () {
         mapboxMap?.style.getStyleDefaultCamera().then(
             (value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text("center: ${value.center}"),
+                  content: Text(
+                      "center: ${value.center?.coordinates.lat}, ${value.center?.coordinates.lng}"),
                   backgroundColor: Theme.of(context).primaryColor,
                   duration: Duration(seconds: 3),
                 )));
@@ -435,7 +433,7 @@ class StylePageBodyState extends State<StylePageBody> {
       onPressed: () {
         mapboxMap?.style.getProjection().then(
             (value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text("getProjection: $value"),
+                  content: Text("getProjection: ${value?.name}"),
                   backgroundColor: Theme.of(context).primaryColor,
                   duration: Duration(seconds: 2),
                 )));
@@ -453,20 +451,6 @@ class StylePageBodyState extends State<StylePageBody> {
         } else {
           mapProject = StyleProjectionName.globe;
         }
-      },
-    );
-  }
-
-  Widget _changeLocale() {
-    return TextButton(
-      child: Text('changeLocale'),
-      onPressed: () {
-        if (locale == 'en') {
-          locale = 'de';
-        } else {
-          locale = 'en';
-        }
-        mapboxMap?.style.localizeLabels(locale, null);
       },
     );
   }
@@ -508,7 +492,6 @@ class StylePageBodyState extends State<StylePageBody> {
         _isStyleLoaded(),
         _getProjection(),
         _setProjection(),
-        _changeLocale(),
       ],
     );
 

@@ -2,6 +2,7 @@ library mapbox_maps_flutter;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -10,8 +11,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:meta/meta.dart';
 import 'package:turf/turf.dart' as turf;
-
-import 'src/proxy_binary_messenger.dart' show ProxyBinaryMessenger;
 
 export 'package:turf/helpers.dart';
 
@@ -50,6 +49,7 @@ part 'src/style/layer/sky_layer.dart';
 part 'src/style/layer/symbol_layer.dart';
 part 'src/style/layer/slot_layer.dart';
 part 'src/style/layer/raster_particle_layer.dart';
+part 'src/style/layer/clip_layer.dart';
 part 'src/style/mapbox_styles.dart';
 part 'src/style/source/geojson_source.dart';
 part 'src/style/source/image_source.dart';

@@ -4,32 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
-import 'page.dart';
+import 'example.dart';
 
-class MapInterfacePage extends ExamplePage {
-  MapInterfacePage() : super(const Icon(Icons.map), 'MapInterface');
+class MapInterfaceExample extends StatefulWidget implements Example {
+  @override
+  final Widget leading = const Icon(Icons.map);
+  @override
+  final String title = 'MapInterface';
+  @override
+  final String? subtitle = null;
 
   @override
-  Widget build(BuildContext context) {
-    return const MapInterfacePageBody();
-  }
+  State<StatefulWidget> createState() => MapInterfaceExampleState();
 }
 
-class MapInterfacePageBody extends StatefulWidget {
-  const MapInterfacePageBody();
-
-  @override
-  State<StatefulWidget> createState() => MapInterfacePageBodyState();
-}
-
-class MapInterfacePageBodyState extends State<MapInterfacePageBody> {
-  MapInterfacePageBodyState();
+class MapInterfaceExampleState extends State<MapInterfaceExample> {
+  MapInterfaceExampleState();
 
   MapboxMap? mapboxMap;
 
   var gestureInProgress = true;
   var userAnimationInProgress = true;
-  var showTileBorders = true;
+  var showTileBorders = false;
 
   _onMapCreated(MapboxMap mapboxMap) {
     this.mapboxMap = mapboxMap;
@@ -95,7 +91,7 @@ class MapInterfacePageBodyState extends State<MapInterfacePageBody> {
       child: Text('setFeatureState'),
       onPressed: () {
         mapboxMap?.setFeatureState(
-            'source', 'custom', 'point', json.encode({'choose': true}));
+            'source', null, 'point', json.encode({'choose': true}));
       },
     );
   }
@@ -104,7 +100,7 @@ class MapInterfacePageBodyState extends State<MapInterfacePageBody> {
     return TextButton(
       child: Text('getFeatureState'),
       onPressed: () {
-        mapboxMap?.getFeatureState('source', 'custom', 'point').then(
+        mapboxMap?.getFeatureState('source', null, 'point').then(
             (value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text("FeatureState: ${value}"),
                   backgroundColor: Theme.of(context).primaryColor,
@@ -197,36 +193,6 @@ class MapInterfacePageBodyState extends State<MapInterfacePageBody> {
     );
   }
 
-  Widget _setDebugOptions() {
-    return TextButton(
-        child: Text('setDebugOptions'),
-        onPressed: () {
-          mapboxMap?.setDebug(
-              [MapDebugOptions(data: MapDebugOptionsData.TILE_BORDERS)],
-              showTileBorders);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text("showTileBorders : $showTileBorders"),
-            backgroundColor: Theme.of(context).primaryColor,
-            duration: Duration(seconds: 2),
-          ));
-          showTileBorders = !showTileBorders;
-        });
-  }
-
-  Widget _getDebugOptions() {
-    return TextButton(
-      child: Text('getDebugOptions'),
-      onPressed: () {
-        mapboxMap?.getDebug().then(
-            (value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text("getDebugOptions: ${value.first}"),
-                  backgroundColor: Theme.of(context).primaryColor,
-                  duration: Duration(seconds: 2),
-                )));
-      },
-    );
-  }
-
   Widget _getMapOptions() {
     return TextButton(
       child: Text('getMapOptions'),
@@ -234,7 +200,7 @@ class MapInterfacePageBodyState extends State<MapInterfacePageBody> {
         mapboxMap?.getMapOptions().then(
             (value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(
-                      "Size: ${value.size?.width}-${value.size?.height},constrainMode: ${value.constrainMode},orientation: ${value.orientation}"),
+                      "Size: ${value.size?.width}-${value.size?.height}, constrainMode: ${value.constrainMode}, orientation: ${value.orientation}"),
                   backgroundColor: Theme.of(context).primaryColor,
                   duration: Duration(seconds: 2),
                 )));
@@ -275,11 +241,11 @@ class MapInterfacePageBodyState extends State<MapInterfacePageBody> {
     return TextButton(
       child: Text('queryRenderedFeatures'),
       onPressed: () {
-        var screenBox = ScreenBox(
+        final screenBox = ScreenBox(
             min: ScreenCoordinate(x: 0.0, y: 0.0),
             max: ScreenCoordinate(x: 150.0, y: 510.0));
-        var renderedQueryGeometry = RenderedQueryGeometry(
-            value: json.encode(screenBox.encode()), type: Type.SCREEN_BOX);
+        final renderedQueryGeometry =
+            RenderedQueryGeometry.fromScreenBox(screenBox);
         mapboxMap
             ?.queryRenderedFeatures(
                 renderedQueryGeometry,
@@ -325,8 +291,6 @@ class MapInterfacePageBodyState extends State<MapInterfacePageBody> {
         _getSize(),
         _getMapOptions(),
         _getResourceOptions(),
-        _setDebugOptions(),
-        _getDebugOptions(),
         _reduceMemoryUse(),
         _getGestureInProgress(),
         _setGestureInProgress(),

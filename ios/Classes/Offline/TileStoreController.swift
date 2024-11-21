@@ -7,15 +7,15 @@ final class TileStoreController: _TileStore {
         case invalidTileRegionLoadOptions
     }
 
-    private let proxy: ProxyBinaryMessenger
+    private let messenger: SuffixBinaryMessenger
     private let tileStore: TileStore
 
     private lazy var offlineManager = OfflineManager()
     private var tileRegionLoadProgressHandlers: [String: AnyFlutterStreamHandler] = [:]
     private var tileRegionEstimateProgressHandlers: [String: AnyFlutterStreamHandler] = [:]
 
-    init(proxy: ProxyBinaryMessenger, tileStore: TileStore) {
-        self.proxy = proxy
+    init(messenger: SuffixBinaryMessenger, tileStore: TileStore) {
+        self.messenger = messenger
         self.tileStore = tileStore
     }
 
@@ -36,7 +36,7 @@ final class TileStoreController: _TileStore {
 
     func addTileRegionLoadProgressListener(id: String) throws {
         let handler = AnyFlutterStreamHandler()
-        let eventChannel = FlutterEventChannel(name: "com.mapbox.maps.flutter/tilestore/tile-region-\(id)", binaryMessenger: proxy.messenger)
+        let eventChannel = FlutterEventChannel(name: "com.mapbox.maps.flutter/\(messenger.suffix)/tile-region-\(id)", binaryMessenger: messenger.messenger)
         eventChannel.setStreamHandler(handler)
         tileRegionLoadProgressHandlers[id] = handler
     }
@@ -62,7 +62,7 @@ final class TileStoreController: _TileStore {
 
     func addTileRegionEstimateProgressListener(id: String) throws {
         let handler = AnyFlutterStreamHandler()
-        let eventChannel = FlutterEventChannel(name: "com.mapbox.maps.flutter/tilestore/tile-region-estimate-\(id)", binaryMessenger: proxy.messenger)
+        let eventChannel = FlutterEventChannel(name: "com.mapbox.maps.flutter/\(messenger.suffix)/tile-region-estimate-\(id)", binaryMessenger: messenger.messenger)
         eventChannel.setStreamHandler(handler)
         tileRegionEstimateProgressHandlers[id] = handler
     }
@@ -75,7 +75,7 @@ final class TileStoreController: _TileStore {
 
     func tileRegionContainsDescriptor(id: String, options: [TilesetDescriptorOptions], completion: @escaping (Result<Bool, Swift.Error>) -> Void) {
         let descriptors = options
-            .map(MapboxCoreMaps.TilesetDescriptorOptions.init(fltValue:))
+            .compactMap(MapboxCoreMaps.TilesetDescriptorOptions.init(fltValue:))
             .map(offlineManager.createTilesetDescriptor(for:))
 
         tileStore.tileRegionContainsDescriptors(forId: id, descriptors: descriptors, completion: executeOnMainThread(completion))
@@ -101,6 +101,14 @@ final class TileStoreController: _TileStore {
             executeOnMainThread(completion)(result.map { $0.toFLTTileRegion() })
         }
     }
+
+    func setOptionForKey(key: _TileStoreOptionsKey, domain: TileDataDomain?, value: Any?) throws {
+        if let domain {
+            tileStore.setOptionForKey(key.toTileStoreOptionsKey(), domain: domain.toTileDataDomain(), value: value as Any)
+        } else {
+            tileStore.setOptionForKey(key.toTileStoreOptionsKey(), value: value as Any)
+        }
+    }
 }
 
 extension OfflineManager {
@@ -110,11 +118,11 @@ extension OfflineManager {
             geometry: convertDictionaryToGeometry(dict: fltValue.geometry),
             descriptors: fltValue.descriptorsOptions?.compactMap { descriptorOptions in
                 guard let descriptorOptions else { return nil }
-                return createTilesetDescriptor(for: MapboxCoreMaps.TilesetDescriptorOptions(fltValue: descriptorOptions))
+                return MapboxCoreMaps.TilesetDescriptorOptions(fltValue: descriptorOptions).map(createTilesetDescriptor(for:))
             },
             metadata: fltValue.metadata,
             acceptExpired: fltValue.acceptExpired,
-            networkRestriction: MapboxCommon.NetworkRestriction(other: fltValue.networkRestriction) ?? .none,
+            networkRestriction: MapboxCommon.NetworkRestriction(fltValue: fltValue.networkRestriction),
             averageBytesPerSecond: fltValue.averageBytesPerSecond.map(Int.init),
             extraOptions: fltValue.extraOptions
         )

@@ -1,4 +1,116 @@
-### main
+> [!IMPORTANT]
+> Configuring Mapbox's secret token is no longer required when installing our SDKs.
+
+### 2.4.1
+
+* Fix annotation click listeners not working.
+
+### 2.4.0
+
+* Update Maps SDK to 11.8.0
+* Updated the minimum required Flutter SDK to version 3.22.3 and Dart to version 3.4.4. With the fix for Virtual Display hosting mode on Android in Flutter 3.22, we’ve changed the default map view hosting mode to Virtual Display composition. This update should eliminate the brief visibility of the map after it has been dismissed.
+* Introduce experimental property `MapboxMap.styleGlyphURL`. Use this property to apply custom fonts to the map at runtime, without modifying the base style.
+* Expose current map's camera state on `CameraChanged` event. [#704](https://github.com/mapbox/mapbox-maps-flutter/pull/704)
+
+You can now observe the map's camera updates with `onCameraChangeListener`
+
+```dart
+onCameraChangeListener(CameraChangedEventData data) {
+  print("CameraChangedEventData: timestamp: ${data.timestamp}, cameraState: ${data.cameraState}");
+}
+```
+* Print to console native Maps SDK logs in debug configuration. [#710](https://github.com/mapbox/mapbox-maps-flutter/pull/710)
+Logs are proxied only in debug configuration and can be disabled completely by passing environment flag `MAPBOX_LOG_DEBUG` with false value.
+* Fix rare crash in `Snapshotter`. The crash could happen when creating/destroying multiple instances of `Snapshotter` in succession. [#728](https://github.com/mapbox/mapbox-maps-flutter/pull/728)
+* Fix a crash that occurs when the widget state is updated before the platform view is created. [#724](https://github.com/mapbox/mapbox-maps-flutter/pull/724)
+* Fix a crash in Snapshotter when GlyphsRasterizationMode is specified in MapSnapshotOptions. [#738](https://github.com/mapbox/mapbox-maps-flutter/pull/738)
+* Remove `ProxyBinaryMessenger`, instead setup channel with a `messageChannelSuffix`. [#715](https://github.com/mapbox/mapbox-maps-flutter/pull/715).
+
+# 2.3.0
+
+* Deprecate untyped default constructor of `RenderedQueryGeometry` with typed constructors: `RenderedQueryGeometry.fromList()/fromScreenBox()/fromScreenCoordinate()`.
+
+This change improves type safety and clarity in the code. By using specific constructors, you can ensure that the `RenderedQueryGeometry` is created with the correct type of data, reducing the risk of runtime errors and making the code easier to understand and maintain.
+
+**Example:**
+
+*Before:*
+```dart
+// Using the untyped default constructor
+final geometry = RenderedQueryGeometry(type: Type.SCREEN_COORDINATE, value jsonEncode(screenCoordinate.encode()));
+```
+
+*After:*
+```dart
+// Using a typed constructor
+final geometry = RenderedQueryGeometry.fromScreenCoordinate(screenCoordinate);
+```
+* Expose API to clear map data, and to set options to `TileStore`.
+
+You can now clear temporary map data from the data path defined in the given resource options, which is useful when you want reduce the disk usage or in case the disk cache contains invalid data.
+```dart
+await MapboxMapsOptions.clearData();
+```
+And you can now set additional options to a `TileStore`, for example, a maximum amount of bytes TileStore can use to store files., base URL to use for requests to the Mapbox API, or URL template for making tile requests.
+```dart
+// Set the disk quota to zero, so that tile regions are fully evicted
+// when removed.
+// This removes the tiles from the predictive cache.
+tileStore.setDiskQuota(0);
+```
+* Add support for partial GeoJSON updates. 
+
+Instead of setting a whole new GeoJSON object anew every time a single feature has changed, now you can apply more granular, partial GeoJSON updates.
+If your features have associated identifiers - you can add, update, and remove them on individual basis in your ``GeoJSONSource``. This is especially beneficial for ``GeoJSONSource``s hosting a large amount of features - in this case adding a feature can be up to 4x faster with the partial GeoJSON update API.
+
+```dart
+mapboxMap.style.addGeoJSONSourceFeatures(sourceId, dataId, features)
+mapboxMap.style.updateGeoJSONSourceFeatures(sourceId, dataId, features)
+mapboxMap.style.removeGeoJSONSourceFeatures(sourceId, dataId, featureIds)
+```
+* Fix `StyleManager.getLayer()` failing for `ModelLayer`, `RasterParticleLayer` and `SlotLayer`.
+* Expose data-driven properties on annotation managers. Now it's possible to set data-driven properties globally on annotation manager and specify per-annotation overrides.
+Previously user had to specify those properties on each annotation and couldn't specify them globally.
+
+In this case each even annotation will have random color, but others will use the global default specified in the annotation manager.
+```dart
+final circleAnnotationManager = await mapboxMap.annotations.createCircleAnnotationManager();
+var annotations = <CircleAnnotationOptions>[];
+for (var i = 0; i < 2000; i++){
+  var annotation = CircleAnnotationOptions(
+    geometry: createRandomPoint(),
+    circleColor: (i % 2 == 0) ? createRandomColor() : null,
+    );
+
+  annotations.add(annotation);
+}
+circleAnnotationManager.setCircleColor(Colors.blue.value);
+```
+* Expose `autoMaxZoom` property for `GeoJsonSource` to fix rendering issues with `FillExtrusionLayer` in some cases.
+* Expose experimental `ClipLayer` to remove 3D data (fill extrusions, landmarks, trees) and symbols.
+* Deprecate `SlotLayer.sourceId` and `SlotLayer.sourceLayer` as they have no effect in this layer.
+* Expose experimental `SymbolLayer.symbolElevationReference` and `SymbolLayer.symbolZOffset`.
+* Add missing `@experimental` annotations to `Layer`'s `Expression` properties.
+* Remove experimental `model-front-cutoff` property from `ModelLayer`.
+* Expose experimental `lineTrimColor` and `lineTrimFadeRange` on `LineLayer` which allow to set custom color for trimmed line and fade effect for trim.
+* Add experimental `FillExtrusionLayer.fillExtrusionLineWidth` that can switch fill extrusion rendering into wall rendering mode. Use this property to render the feature with the given width over the outlines of the geometry.
+* Add experimental `MapboxMap.setSnapshotLegacyMode()` to help avoiding `MapboxMap.snapshot()` native crash on some Samsung devices running Android 14. `MapboxMap.setSnapshotLegacyMode()` has no effect on iOS.
+* Fix build errors when using Flutter SDK 3.24.
+* Add `GestureState` to `MapContentGestureContext` to indicate whether gesture has been started, its touches have changed or it has ended.
+* Bump Maps SDK to 11.7.0.
+
+### 2.2.0
+
+* Bump Maps SDK to 11.6.0
+* Update Pigeon to `21.1.0`
+
+### 2.2.0-rc.1
+
+* Expose `MapboxStyles.STANDARD_SATELLITE` style.
+* `MapDebugOptions` is superseded by `MapWidgetDebugOptions`, expanding existing debug options with the new `light`, `camera`, and `padding` debug options in addition to the new Android-specific options: `layers2DWireframe` and `layers3DWireframe`.
+* Bump Maps SDK to 11.6.0-rc.1
+
+### 2.2.0-beta.1
 
 * Support local assets for 3D puck and `ModelLayer`. To use a local assets, please specify it with `asset://` scheme in the uri.
 * Fix map view crashing upon host activity destruction when using a cached Flutter engine.

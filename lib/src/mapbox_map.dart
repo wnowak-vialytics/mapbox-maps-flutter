@@ -1,70 +1,212 @@
 part of mapbox_maps_flutter;
 
+/// Geometry for querying rendered features.
+class RenderedQueryGeometry {
+  @Deprecated(
+      'Use RenderedQueryGeometry.fromList()/fromScreenBox()/fromScreenCoordinated() instead')
+  RenderedQueryGeometry({
+    required this.value,
+    required this.type,
+  });
+
+  RenderedQueryGeometry.fromList(List<ScreenCoordinate> points)
+      : value = jsonEncode(points.map((e) => e.toJson()).toList()),
+        type = Type.LIST;
+
+  RenderedQueryGeometry.fromScreenBox(ScreenBox box)
+      : value = jsonEncode(box.toJson()),
+        type = Type.SCREEN_BOX;
+
+  RenderedQueryGeometry.fromScreenCoordinate(ScreenCoordinate point)
+      : value = jsonEncode(point.toJson()),
+        type = Type.SCREEN_COORDINATE;
+
+  /// ScreenCoordinate/List<ScreenCoordinate>/ScreenBox in Json mode.
+  String value;
+
+  /// Type of the geometry encoded in [value].
+  Type type;
+}
+
+/// Options for enabling debugging features in a map.
+class MapWidgetDebugOptions {
+  final _MapWidgetDebugOptions _option;
+
+  const MapWidgetDebugOptions._(this._option);
+
+  /// Edges of tile boundaries are shown as thick, red lines to help diagnose
+  /// tile clipping issues.
+  static const MapWidgetDebugOptions tileBorders =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.tileBorders);
+
+  /// Each tile shows its tile coordinate (x/y/z) in the upper-left corner.
+  static const MapWidgetDebugOptions parseStatus =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.parseStatus);
+
+  /// Each tile shows a timestamps with modified and expires dates or n/a if
+  /// timestamp is not available.
+  static const MapWidgetDebugOptions timestamps =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.timestamps);
+
+  /// Edges of glyphs and symbols are shown as faint, green lines to help
+  /// diagnose collision and label placement issues.
+  static const MapWidgetDebugOptions collision =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.collision);
+
+  /// Each drawing operation is replaced by a translucent fill. Overlapping
+  /// drawing operations appear more prominent to help diagnose overdrawing.
+  static const MapWidgetDebugOptions overdraw =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.overdraw);
+
+  /// The stencil buffer is shown instead of the color buffer.
+  static const MapWidgetDebugOptions stencilClip =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.stencilClip);
+
+  /// The depth buffer is shown instead of the color buffer.
+  static const MapWidgetDebugOptions depthBuffer =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.depthBuffer);
+
+  /// Show 3D model bounding boxes.
+  static const MapWidgetDebugOptions modelBounds =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.modelBounds);
+
+  /// Show a wireframe for terrain.
+  /// Supported on Android only.
+  static const MapWidgetDebugOptions terrainWireframe =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.terrainWireframe);
+
+  /// Show a wireframe for 2D layers.
+  /// Supported on Android only.
+  static const MapWidgetDebugOptions layers2DWireframe =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.layers2DWireframe);
+
+  /// Show a wireframe for 3D layers.
+  /// Supported on Android only.
+  static const MapWidgetDebugOptions layers3DWireframe =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.layers3DWireframe);
+
+  /// Each tile shows its local lighting conditions in the upper-left corner.
+  /// (If `lights` properties are used, otherwise they show zero.)
+  static const MapWidgetDebugOptions light =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.light);
+
+  /// Show a debug overlay with information about the CameraState
+  /// including lat, long, zoom, pitch, & bearing.
+  static const MapWidgetDebugOptions camera =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.camera);
+
+  /// Draws camera padding frame.
+  static const MapWidgetDebugOptions padding =
+      MapWidgetDebugOptions._(_MapWidgetDebugOptions.padding);
+}
+
+extension on _MapWidgetDebugOptions {
+  MapWidgetDebugOptions get widgetDebugOptions {
+    switch (this) {
+      case _MapWidgetDebugOptions.tileBorders:
+        return MapWidgetDebugOptions.tileBorders;
+      case _MapWidgetDebugOptions.parseStatus:
+        return MapWidgetDebugOptions.parseStatus;
+      case _MapWidgetDebugOptions.timestamps:
+        return MapWidgetDebugOptions.timestamps;
+      case _MapWidgetDebugOptions.collision:
+        return MapWidgetDebugOptions.collision;
+      case _MapWidgetDebugOptions.overdraw:
+        return MapWidgetDebugOptions.overdraw;
+      case _MapWidgetDebugOptions.stencilClip:
+        return MapWidgetDebugOptions.stencilClip;
+      case _MapWidgetDebugOptions.depthBuffer:
+        return MapWidgetDebugOptions.depthBuffer;
+      case _MapWidgetDebugOptions.modelBounds:
+        return MapWidgetDebugOptions.modelBounds;
+      case _MapWidgetDebugOptions.terrainWireframe:
+        return MapWidgetDebugOptions.terrainWireframe;
+      case _MapWidgetDebugOptions.layers2DWireframe:
+        return MapWidgetDebugOptions.layers2DWireframe;
+      case _MapWidgetDebugOptions.layers3DWireframe:
+        return MapWidgetDebugOptions.layers3DWireframe;
+      case _MapWidgetDebugOptions.light:
+        return MapWidgetDebugOptions.light;
+      case _MapWidgetDebugOptions.camera:
+        return MapWidgetDebugOptions.camera;
+      case _MapWidgetDebugOptions.padding:
+        return MapWidgetDebugOptions.padding;
+    }
+  }
+}
+
 /// Controller for a single MapboxMap instance running on the host platform.
 class MapboxMap extends ChangeNotifier {
-  MapboxMap({
+  MapboxMap._({
     required _MapboxMapsPlatform mapboxMapsPlatform,
     this.onMapTapListener,
     this.onMapLongTapListener,
     this.onMapScrollListener,
   }) : _mapboxMapsPlatform = mapboxMapsPlatform {
-    _proxyBinaryMessenger = _mapboxMapsPlatform.binaryMessenger;
-
-    annotations = _AnnotationManager(mapboxMapsPlatform: _mapboxMapsPlatform);
+    annotations = AnnotationManager._(mapboxMapsPlatform: _mapboxMapsPlatform);
     _setupGestures();
   }
 
   final _MapboxMapsPlatform _mapboxMapsPlatform;
 
   /// The currently loaded Style]object.
-  late StyleManager style =
-      StyleManager(binaryMessenger: _proxyBinaryMessenger);
+  late StyleManager style = StyleManager(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
   /// The interface to set the location puck.
-  late LocationSettings location = LocationSettings(
+  late LocationSettings location = LocationSettings._(
       _LocationComponentSettingsInterface(
-          binaryMessenger: _proxyBinaryMessenger));
+          binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+          messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString()));
 
-  late BinaryMessenger _proxyBinaryMessenger;
-
-  late _CameraManager _cameraManager =
-      _CameraManager(binaryMessenger: _proxyBinaryMessenger);
-  late _MapInterface _mapInterface =
-      _MapInterface(binaryMessenger: _proxyBinaryMessenger);
-  late _AnimationManager _animationManager =
-      _AnimationManager(binaryMessenger: _proxyBinaryMessenger);
+  late _CameraManager _cameraManager = _CameraManager(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
+  late _MapInterface _mapInterface = _MapInterface(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
+  late _AnimationManager _animationManager = _AnimationManager(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
   /// The interface to create and set annotations.
-  late final _AnnotationManager annotations;
+  late final AnnotationManager annotations;
 
   // Keep Projection visible for users as iOS doesn't include it in MapboxMaps.
   /// The map projection of the style.
-  late Projection projection =
-      Projection(binaryMessenger: _proxyBinaryMessenger);
+  late Projection projection = Projection(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
   /// The interface to access the gesture settings.
-  late GesturesSettingsInterface gestures =
-      GesturesSettingsInterface(binaryMessenger: _proxyBinaryMessenger);
+  late GesturesSettingsInterface gestures = GesturesSettingsInterface(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
   /// The interface to set the logo settings.
-  late LogoSettingsInterface logo =
-      LogoSettingsInterface(binaryMessenger: _proxyBinaryMessenger);
+  late LogoSettingsInterface logo = LogoSettingsInterface(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
   /// The interface to access the compass settings.
-  late CompassSettingsInterface compass =
-      CompassSettingsInterface(binaryMessenger: _proxyBinaryMessenger);
+  late CompassSettingsInterface compass = CompassSettingsInterface(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
   /// The interface to access the HttpFactory settings.
   late HttpFactorySettingsInterface httpFactory =
       HttpFactorySettingsInterface(binaryMessenger: _proxyBinaryMessenger);
 
   /// The interface to access the compass settings.
-  late ScaleBarSettingsInterface scaleBar =
-      ScaleBarSettingsInterface(binaryMessenger: _proxyBinaryMessenger);
+  late ScaleBarSettingsInterface scaleBar = ScaleBarSettingsInterface(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
   /// The interface to access the attribution settings.
-  late AttributionSettingsInterface attribution =
-      AttributionSettingsInterface(binaryMessenger: _proxyBinaryMessenger);
+  late AttributionSettingsInterface attribution = AttributionSettingsInterface(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+      messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
   OnMapTapListener? onMapTapListener;
   OnMapLongTapListener? onMapLongTapListener;
@@ -73,7 +215,9 @@ class MapboxMap extends ChangeNotifier {
   @override
   void dispose() {
     _mapboxMapsPlatform.dispose();
-    GestureListener.setUp(null, binaryMessenger: _proxyBinaryMessenger);
+    GestureListener.setUp(null,
+        binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+        messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
     super.dispose();
   }
@@ -257,17 +401,47 @@ class MapboxMap extends ChangeNotifier {
   /// Returns the `map options`.
   Future<MapOptions> getMapOptions() => _mapInterface.getMapOptions();
 
+  /// The URL that points to the glyphs used by the style for rendering text labels on the map.
+  ///
+  /// This property allows setting a custom glyph URL at runtime, making it easier to
+  /// apply custom fonts to the map without modifying the base style.
+  Future<String> styleGlyphURL() => _mapInterface.styleGlyphURL();
+
+  /// The URL that points to the glyphs used by the style for rendering text labels on the map.
+  ///
+  /// This property allows setting a custom glyph URL at runtime, making it easier to
+  /// apply custom fonts to the map without modifying the base style.
+  Future<void> setStyleGlyphURL(String glyphURL) =>
+      _mapInterface.setStyleGlyphURL(glyphURL);
+
+  /// Debug options for the widget associated with the map.
+  Future<List<MapWidgetDebugOptions>> getDebugOptions() async {
+    return _mapInterface.getDebugOptions().then((value) {
+      return value.map((e) => e.widgetDebugOptions).toList();
+    });
+  }
+
+  /// Set debug options for the widget associated with the map.
+  Future<void> setDebugOptions(List<MapWidgetDebugOptions> debugOptions) {
+    return _mapInterface
+        .setDebugOptions(debugOptions.map((e) => e._option).toList());
+  }
+
   /// Returns the `map debug options`.
+  @Deprecated("Use 'getDebugOptions()' instead")
   Future<List<MapDebugOptions?>> getDebug() => _mapInterface.getDebug();
 
   /// Sets the `map debug options` and enables debug mode based on the passed value.
+  @Deprecated("Use 'setDebugOptions()' instead")
   Future<void> setDebug(List<MapDebugOptions?> debugOptions, bool value) =>
       _mapInterface.setDebug(debugOptions, value);
 
   /// Queries the map for rendered features.
   Future<List<QueriedRenderedFeature?>> queryRenderedFeatures(
           RenderedQueryGeometry geometry, RenderedQueryOptions options) =>
-      _mapInterface.queryRenderedFeatures(geometry, options);
+      _mapInterface.queryRenderedFeatures(
+          _RenderedQueryGeometry(value: geometry.value, type: geometry.type),
+          options);
 
   /// Queries the map for source features.
   Future<List<QueriedSourceFeature?>> querySourceFeatures(
@@ -438,7 +612,8 @@ class MapboxMap extends ChangeNotifier {
             onMapLongTapListener: onMapLongTapListener,
             onMapScrollListener: onMapScrollListener,
           ),
-          binaryMessenger: _mapboxMapsPlatform.binaryMessenger);
+          binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+          messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
       _mapboxMapsPlatform.addGestureListeners();
     }
   }
@@ -465,6 +640,17 @@ class MapboxMap extends ChangeNotifier {
   void setInterceptor(List<HttpInterceptorOptions?> options) {
     httpFactory.setInterceptor(options);
   }
+
+  /// Set whether legacy mode should be used for [snapshot].
+  ///
+  /// Legacy mode is not that efficient (as it blocks map rendering when making the snapshot)
+  /// but may help with vendor specific issues like described in
+  /// https://github.com/mapbox/mapbox-maps-android/issues/2280.
+  ///
+  /// Note: This method has no effect on iOS platform.
+  @experimental
+  Future<void> setSnapshotLegacyMode(bool enable) =>
+      _mapInterface.setSnapshotLegacyMode(enable);
 }
 
 class _GestureListener extends GestureListener {

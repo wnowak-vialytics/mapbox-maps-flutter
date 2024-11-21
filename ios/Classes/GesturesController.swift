@@ -19,7 +19,11 @@ final class GesturesController: NSObject, GesturesSettingsInterface, UIGestureRe
 
         let touchPoint = sender.location(in: mapView)
         let point = Point(mapView.mapboxMap.coordinate(for: touchPoint))
-        let context = MapContentGestureContext(touchPosition: touchPoint.toFLTScreenCoordinate(), point: point)
+        let context = MapContentGestureContext(
+            touchPosition: touchPoint.toFLTScreenCoordinate(),
+            point: point,
+            gestureState: sender.state.toFLTGestureState()
+        )
 
         onGestureListener?.onScroll(context: context, completion: { _ in })
     }
@@ -102,11 +106,11 @@ final class GesturesController: NSObject, GesturesSettingsInterface, UIGestureRe
         )
     }
 
-    func addListeners(messenger: FlutterBinaryMessenger) {
+    func addListeners(messenger: SuffixBinaryMessenger) {
         removeListeners()
         mapView.gestures.panGestureRecognizer.addTarget(self, action: #selector(onMapPan))
 
-        onGestureListener = GestureListener(binaryMessenger: messenger)
+        onGestureListener = GestureListener(binaryMessenger: messenger.messenger, messageChannelSuffix: messenger.suffix)
 
         mapView.gestures.onMapTap.observe { [weak self] context in
             guard let self else { return }

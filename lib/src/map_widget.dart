@@ -48,7 +48,7 @@ class MapWidget extends StatefulWidget {
     // FIXME Flutter 3.x has memory leak on Android using in SurfaceView mode, see https://github.com/flutter/flutter/issues/118384
     // As a workaround default is true.
     this.textureView = true,
-    this.androidHostingMode = AndroidPlatformViewHostingMode.HC,
+    this.androidHostingMode = AndroidPlatformViewHostingMode.VD,
     this.styleUri = MapboxStyles.STANDARD,
     this.gestureRecognizers,
     this.onMapCreated,
@@ -69,7 +69,9 @@ class MapWidget extends StatefulWidget {
     this.onTapListener,
     this.onLongTapListener,
     this.onScrollListener,
-  }) : super(key: key) {}
+  }) : super(key: key) {
+    LogConfiguration._setupDebugLoggingIfNeeded();
+  }
 
   /// Describes the map options value when using a MapWidget.
   final MapOptions? mapOptions;
@@ -83,7 +85,7 @@ class MapWidget extends StatefulWidget {
   /// As a workaround default is true.
   final bool? textureView;
 
-  /// Controls the way the underlaying MapView is being hosted by Flutter on Android.
+  /// Controls the way the underlying MapView is being hosted by Flutter on Android.
   /// This setting has no effect on iOS.
   @experimental
   final AndroidPlatformViewHostingMode androidHostingMode;
@@ -169,23 +171,21 @@ class MapWidget extends StatefulWidget {
 
 class _MapWidgetState extends State<MapWidget> {
   late final _MapboxMapsPlatform _mapboxMapsPlatform =
-      _MapboxMapsPlatform(binaryMessenger: _binaryMessenger);
+      _MapboxMapsPlatform.instance(_suffix);
   final int _suffix = _suffixesRegistry.getSuffix();
-  late final BinaryMessenger _binaryMessenger =
-      ProxyBinaryMessenger(suffix: _suffix.toString());
   late final _MapEvents _events;
-
+  bool _platformViewCreated = false;
   MapboxMap? mapboxMap;
 
   @override
   Widget build(BuildContext context) {
     final Map<String, dynamic> creationParams = <String, dynamic>{
-      'mapOptions': widget.mapOptions?.encode(),
-      'cameraOptions': widget.cameraOptions?.encode(),
+      'mapOptions': widget.mapOptions,
+      'cameraOptions': widget.cameraOptions,
       'textureView': widget.textureView,
       'styleUri': widget.styleUri,
-      'channelSuffix': _suffix,
-      'mapboxPluginVersion': '2.1.0',
+      'channelSuffix': _mapboxMapsPlatform.channelSuffix,
+      'mapboxPluginVersion': '2.4.1',
       'eventTypes': _events.eventTypes.map((e) => e.index).toList(),
     };
 
@@ -197,7 +197,9 @@ class _MapWidgetState extends State<MapWidget> {
   void initState() {
     super.initState();
 
-    _events = _MapEvents(binaryMessenger: _binaryMessenger);
+    _events = _MapEvents(
+        binaryMessenger: _mapboxMapsPlatform.binaryMessenger,
+        channelSuffix: _suffix.toString());
     _updateEventListeners();
   }
 
@@ -215,7 +217,10 @@ class _MapWidgetState extends State<MapWidget> {
     super.didUpdateWidget(oldWidget);
 
     _updateEventListeners();
-    _events.updateSubscriptions();
+
+    if (_platformViewCreated) {
+      _events.updateSubscriptions();
+    }
   }
 
   void _updateEventListeners() {
@@ -237,7 +242,7 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   Future<void> onPlatformViewCreated(int id) async {
-    final MapboxMap controller = MapboxMap(
+    final MapboxMap controller = MapboxMap._(
       mapboxMapsPlatform: _mapboxMapsPlatform,
       onMapTapListener: widget.onTapListener,
       onMapLongTapListener: widget.onLongTapListener,
@@ -247,5 +252,8 @@ class _MapWidgetState extends State<MapWidget> {
       widget.onMapCreated!(controller);
     }
     mapboxMap = controller;
+
+    _events.updateSubscriptions();
+    _platformViewCreated = true;
   }
 }

@@ -5,10 +5,26 @@ import Flutter
 import Turf
 
 final class MapInterfaceController: _MapInterface {
+
     private static let errorCode = "0"
-    private var mapboxMap: MapboxMap
-    init(withMapboxMap mapboxMap: MapboxMap) {
+    private let mapboxMap: MapboxMap
+    private let mapView: MapView
+
+    init(withMapboxMap mapboxMap: MapboxMap, mapView: MapView) {
         self.mapboxMap = mapboxMap
+        self.mapView = mapView
+    }
+
+    func setSnapshotLegacyMode(enabled: Bool, completion: @escaping (Result<Void, any Error>) -> Void) {
+        completion(.success(()))
+    }
+
+    func styleGlyphURL() throws -> String {
+        return mapboxMap.styleGlyphURL
+    }
+
+    func setStyleGlyphURL(glyphURL: String) throws {
+        mapboxMap.styleGlyphURL = glyphURL
     }
 
     func loadStyleURI(styleURI: String, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -117,6 +133,14 @@ final class MapInterfaceController: _MapInterface {
         return self.mapboxMap.options.toFLTMapOptions()
     }
 
+    func getDebugOptions() throws -> [_MapWidgetDebugOptions] {
+        return mapView.debugOptions.toFLTDebugOptions()
+    }
+
+    func setDebugOptions(debugOptions: [_MapWidgetDebugOptions]) throws {
+        mapView.debugOptions = debugOptions.toDebugOptions()
+    }
+
     func getDebug() throws -> [MapDebugOptions?] {
         return self.mapboxMap.debugOptions.map {$0.toFLTMapDebugOptions()}
     }
@@ -125,15 +149,20 @@ final class MapInterfaceController: _MapInterface {
         self.mapboxMap.debugOptions = debugOptions.compactMap {$0?.toMapDebugOptions()}
     }
 
-    func queryRenderedFeatures(geometry: RenderedQueryGeometry, options: RenderedQueryOptions, completion: @escaping (Result<[QueriedRenderedFeature?], Error>) -> Void) {
+    func queryRenderedFeatures(geometry: _RenderedQueryGeometry, options: RenderedQueryOptions, completion: @escaping (Result<[QueriedRenderedFeature?], Error>) -> Void) {
         do {
-            if geometry.type == .sCREENBOX {
-                let screenBoxArray = convertStringToArray(properties: geometry.value)
-                guard let minCoord = screenBoxArray[0] as? [Double] else {return}
-                guard let maxCoord = screenBoxArray[1] as? [Double] else {return}
-
-                let screenBox = ScreenBox(min: ScreenCoordinate(x: minCoord[0], y: minCoord[1]),
-                                          max: ScreenCoordinate(x: maxCoord[0], y: maxCoord[1]))
+            switch geometry.type {
+            case .sCREENBOX:
+                let screenBoxArray = convertStringToDictionary(properties: geometry.value)
+                guard let minCoord = screenBoxArray["min"] as? [String: Double] else { return }
+                guard let maxCoord = screenBoxArray["max"] as? [String: Double] else { return }
+                guard let minX = minCoord["x"], let minY = minCoord["y"],
+                      let maxX = maxCoord["x"], let maxY = maxCoord["y"] else {
+                    completion(.failure(FlutterError(code: MapInterfaceController.errorCode, message: "Geometry format error", details: geometry.value)))
+                    return
+                }
+                let screenBox = ScreenBox(min: ScreenCoordinate(x: minX, y: minY),
+                                          max: ScreenCoordinate(x: maxX, y: maxY))
                 let cgRect = screenBox.toCGRect()
                 let queryOptions = try options.toRenderedQueryOptions()
                 self.mapboxMap.queryRenderedFeatures(with: cgRect, options: queryOptions) { result in
@@ -144,9 +173,13 @@ final class MapInterfaceController: _MapInterface {
                         completion(.failure(FlutterError(code: MapInterfaceController.errorCode, message: "\(error)", details: nil)))
                     }
                 }
-            } else if geometry.type == .sCREENCOORDINATE {
-                guard let pointArray = convertStringToArray(properties: geometry.value) as? [Double] else {return}
-                let cgPoint = CGPoint(x: pointArray[0], y: pointArray[1])
+            case .sCREENCOORDINATE:
+                guard let pointDict = convertStringToDictionary(properties: geometry.value) as? [String: Double],
+                      let x = pointDict["x"], let y = pointDict["y"] else {
+                    completion(.failure(FlutterError(code: MapInterfaceController.errorCode, message: "Geometry format error", details: geometry.value)))
+                    return
+                }
+                let cgPoint = CGPoint(x: x, y: y)
 
                 try self.mapboxMap.queryRenderedFeatures(with: cgPoint, options: options.toRenderedQueryOptions()) { result in
                     switch result {
@@ -156,10 +189,17 @@ final class MapInterfaceController: _MapInterface {
                         completion(.failure(FlutterError(code: MapInterfaceController.errorCode, message: "\(error)", details: nil)))
                     }
                 }
-            } else {
-                let cgPoints = try JSONDecoder().decode([[Double]].self, from: geometry.value.data(using: String.Encoding.utf8)!)
-
-                try self.mapboxMap.queryRenderedFeatures(with: cgPoints.map({CGPoint(x: $0[0], y: $0[1])}), options: options.toRenderedQueryOptions()) { result in
+            case .lIST:
+                guard let data = geometry.value.data(using: .utf8),
+                      let rawPoints = try? JSONDecoder().decode([[String: Double]].self, from: data) else {
+                    completion(.failure(FlutterError(code: MapInterfaceController.errorCode, message: "Geometry format error", details: geometry.value)))
+                    return
+                }
+                let cgPoints = rawPoints.compactMap {
+                    guard let x = $0["x"], let y = $0["y"] else { return Optional<CGPoint>.none }
+                    return CGPoint(x: x, y: y)
+                }
+                try self.mapboxMap.queryRenderedFeatures(with: cgPoints, options: options.toRenderedQueryOptions()) { result in
                     switch result {
                     case .success(let features):
                         completion(.success(features.map({$0.toFLTQueriedRenderedFeature()})))

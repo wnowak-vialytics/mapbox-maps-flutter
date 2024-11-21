@@ -13,7 +13,9 @@ import com.mapbox.maps.mapbox_maps.toFLTValue
 import com.mapbox.maps.mapbox_maps.toGeometry
 import com.mapbox.maps.mapbox_maps.toNetworkRestriction
 import com.mapbox.maps.mapbox_maps.toResult
+import com.mapbox.maps.mapbox_maps.toTileDataDomain
 import com.mapbox.maps.mapbox_maps.toTileRegionEstimateOptions
+import com.mapbox.maps.mapbox_maps.toTileStoreOptionsKey
 import com.mapbox.maps.mapbox_maps.toTilesetDescriptorOptions
 import com.mapbox.maps.mapbox_maps.toValue
 import io.flutter.plugin.common.BinaryMessenger
@@ -24,6 +26,7 @@ private const val EVENT_CHANNEL_PREFIX = "com.mapbox.maps.flutter/tilestore"
 class TileStoreController(
   private val context: Context,
   private val binaryMessenger: BinaryMessenger,
+  private val channelSuffix: String,
   private val tileStore: TileStore
 ) : _TileStore {
 
@@ -38,7 +41,7 @@ class TileStoreController(
     callback: (Result<TileRegion>) -> Unit
   ) {
     tileStore.loadTileRegion(
-      id, offlineManager.tileRegionLoadOptions(loadOptions),
+      id, offlineManager.tileRegionLoadOptions(loadOptions, context),
       { progress ->
         mainHandler.post {
           tileRegionLoadProgressHandlers[id]?.success(progress.toFLTTileRegionLoadProgress().toList())
@@ -54,7 +57,7 @@ class TileStoreController(
   }
 
   override fun addTileRegionLoadProgressListener(id: String) {
-    val eventChannel = EventChannel(binaryMessenger, "com.mapbox.maps.flutter/tilestore/tile-region-$id")
+    val eventChannel = EventChannel(binaryMessenger, "com.mapbox.maps.flutter/$channelSuffix/tile-region-$id")
     eventChannel.setStreamHandler(
       object : EventChannel.StreamHandler {
         override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
@@ -75,7 +78,7 @@ class TileStoreController(
   ) {
     tileStore.estimateTileRegion(
       id,
-      offlineManager.tileRegionLoadOptions(loadOptions),
+      offlineManager.tileRegionLoadOptions(loadOptions, context),
       estimateOptions?.toTileRegionEstimateOptions() ?: com.mapbox.common.TileRegionEstimateOptions(null),
       { progress ->
         mainHandler.post {
@@ -94,7 +97,7 @@ class TileStoreController(
   }
 
   override fun addTileRegionEstimateProgressListener(id: String) {
-    val eventChannel = EventChannel(binaryMessenger, "com.mapbox.maps.flutter/tilestore/tile-region-estimate$id")
+    val eventChannel = EventChannel(binaryMessenger, "com.mapbox.maps.flutter/$channelSuffix/tile-region-estimate$id")
     eventChannel.setStreamHandler(
       object : EventChannel.StreamHandler {
         override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
@@ -116,7 +119,7 @@ class TileStoreController(
   }
 
   override fun tileRegionContainsDescriptor(id: String, options: List<TilesetDescriptorOptions>, callback: (Result<Boolean>) -> Unit) {
-    val descriptors = options.map { offlineManager.createTilesetDescriptor(it.toTilesetDescriptorOptions()) }
+    val descriptors = options.map { offlineManager.createTilesetDescriptor(it.toTilesetDescriptorOptions(context)) }
     tileStore.tileRegionContainsDescriptors(id, descriptors) { expected ->
       mainHandler.post {
         callback(expected.toResult { it })
@@ -150,9 +153,17 @@ class TileStoreController(
       }
     )
   }
+
+  override fun setOptionForKey(key: _TileStoreOptionsKey, domain: TileDataDomain?, value: Any?) {
+    domain?.also {
+      tileStore.setOption(key.toTileStoreOptionsKey(), it.toTileDataDomain(), value?.toValue() ?: com.mapbox.bindgen.Value.nullValue())
+    } ?: run {
+      tileStore.setOption(key.toTileStoreOptionsKey(), value?.toValue() ?: com.mapbox.bindgen.Value.nullValue())
+    }
+  }
 }
 
-private fun OfflineManager.tileRegionLoadOptions(fltValue: TileRegionLoadOptions): com.mapbox.common.TileRegionLoadOptions {
+private fun OfflineManager.tileRegionLoadOptions(fltValue: TileRegionLoadOptions, context: Context): com.mapbox.common.TileRegionLoadOptions {
   val builder = com.mapbox.common.TileRegionLoadOptions.Builder()
     .geometry(fltValue.geometry?.toGeometry())
     .metadata(fltValue.metadata?.toValue())
@@ -165,7 +176,7 @@ private fun OfflineManager.tileRegionLoadOptions(fltValue: TileRegionLoadOptions
   fltValue.descriptorsOptions?.let { options ->
     val descriptors: List<TilesetDescriptorOptions> = options.filterNotNull()
     builder.descriptors(
-      descriptors.map { createTilesetDescriptor(it.toTilesetDescriptorOptions()) }
+      descriptors.map { createTilesetDescriptor(it.toTilesetDescriptorOptions(context)) }
     )
   }
 
