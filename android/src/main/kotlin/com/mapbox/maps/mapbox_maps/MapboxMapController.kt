@@ -163,10 +163,8 @@ class MapboxMapController(
     AttributionSettingsInterface.setUp(messenger, attributionController, this.channelSuffix)
     ScaleBarSettingsInterface.setUp(messenger, scaleBarController, this.channelSuffix)
     CompassSettingsInterface.setUp(messenger, compassController, this.channelSuffix)
-    FLTHttpFactorySettings.HttpFactorySettingsInterface.setup(
-      proxyBinaryMessenger,
-      httpFactoryController
-    )
+    FLTHttpFactorySettings.HttpFactorySettingsInterface.setup(messenger, httpFactoryController)
+
     methodChannel = MethodChannel(messenger, "plugins.flutter.io.$channelSuffix")
     methodChannel.setMethodCallHandler(this)
   }
@@ -213,7 +211,7 @@ class MapboxMapController(
     LogoSettingsInterface.setUp(messenger, null, channelSuffix)
     GesturesSettingsInterface.setUp(messenger, null, channelSuffix)
     CompassSettingsInterface.setUp(messenger, null, channelSuffix)
-    FLTHttpFactorySettings.HttpFactorySettingsInterface.setup(proxyBinaryMessenger, null)
+    FLTHttpFactorySettings.HttpFactorySettingsInterface.setup(messenger, null)
     ScaleBarSettingsInterface.setUp(messenger, null, channelSuffix)
     AttributionSettingsInterface.setUp(messenger, null, channelSuffix)
   }

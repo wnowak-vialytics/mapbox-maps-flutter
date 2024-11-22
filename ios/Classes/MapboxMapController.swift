@@ -80,9 +80,9 @@ final class MapboxMapController: NSObject, FlutterPlatformView {
         let scaleBarController = ScaleBarController(withMapView: mapView)
         ScaleBarSettingsInterfaceSetup.setUp(binaryMessenger: binaryMessenger.messenger, api: scaleBarController, messageChannelSuffix: binaryMessenger.suffix)
 
-        let httpFactoryController = HttpFactoryController(withPluginVersion: pluginVersion)
+        httpFactoryController = HttpFactoryController(withPluginVersion: pluginVersion)
         HttpFactorySettingsInterfaceSetup.setUp(
-            binaryMessenger: proxyBinaryMessenger,
+            binaryMessenger: binaryMessenger.messenger,
             api: httpFactoryController
         )
 

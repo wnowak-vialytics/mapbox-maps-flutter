@@ -1,5 +1,6 @@
 import Foundation
 @_spi(Experimental) import MapboxMaps
+import Flutter
 import UIKit
 class HttpFactoryController: NSObject, HttpFactorySettingsInterface {
     
@@ -32,9 +33,9 @@ class HttpFactoryController: NSObject, HttpFactorySettingsInterface {
             self.options = options
         }
         
-        func onRequest(for request: HttpRequest) -> HttpRequest {
-            if let oldUserAgent = request.headers[HttpHeaders.userAgent] {
-                request.headers[HttpHeaders.userAgent] = "\(oldUserAgent) FlutterPlugin/\(self.pluginVersion)"
+        func onRequest(for request: HttpRequest, continuation: HttpServiceInterceptorRequestContinuation) {
+            if let oldUserAgent = request.headers["User-Agent"] {
+                request.headers["User-Agent"] = "\(oldUserAgent) FlutterPlugin/\(self.pluginVersion)"
             }
             
             for option in options {
@@ -49,15 +50,11 @@ class HttpFactoryController: NSObject, HttpFactorySettingsInterface {
                 }
             }
             
-            return request
+            continuation(HttpRequestOrResponse.fromHttpRequest(request))
         }
         
-        func onDownload(forDownload download: DownloadOptions) -> DownloadOptions {
-            return download
-        }
-        
-        func onResponse(for response: HttpResponse) -> HttpResponse {
-            return response
+        func onResponse(for response: HttpResponse, continuation: HttpServiceInterceptorResponseContinuation) {
+            continuation(response)
         }
     }
     

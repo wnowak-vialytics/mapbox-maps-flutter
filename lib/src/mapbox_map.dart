@@ -195,8 +195,8 @@ class MapboxMap extends ChangeNotifier {
       messageChannelSuffix: _mapboxMapsPlatform.channelSuffix.toString());
 
   /// The interface to access the HttpFactory settings.
-  late HttpFactorySettingsInterface httpFactory =
-      HttpFactorySettingsInterface(binaryMessenger: _proxyBinaryMessenger);
+  late HttpFactorySettingsInterface httpFactory = HttpFactorySettingsInterface(
+      binaryMessenger: _mapboxMapsPlatform.binaryMessenger);
 
   /// The interface to access the compass settings.
   late ScaleBarSettingsInterface scaleBar = ScaleBarSettingsInterface(
