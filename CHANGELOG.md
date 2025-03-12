@@ -1,9 +1,23 @@
+### 2.6.1
+
+* Update Maps SDK to 11.10.1 (iOS) and 11.10.2 (Android), introducing several bug fixes: 
+  * Fix LUT not being applied to in-place updated images.
+  * Fix in-place updates for SDF images.
+  * Fix background layer not being updated if raster image was updated in-place or if color theme changed.
+  * Vector icons supported in location indicator layer.
+    * Important: `top-image`, `bearing-image`, and `shadow-image` properties on LocationIndicatorLayer are now paint properties instead of layout properties.
+  * Fix mipmaps for images updated in place.
+  * Ensure background color is correctly set.
+  * Fixing missing vector images after style change
+
 ### 2.6.0
 
 > [!IMPORTANT]
 > The iOS minimum deployment target is now iOS 14.0.
 
 * Update Maps SDK to 11.10.0
+* [Android] Fix bug in `.setStyleImportConfigProperties()` where map values were not being set correctly.
+* [Android] Fix throwing NPE when converting a map with null values to a `Value`.
 * Align tap propagation behavior on Android and iOS.
 * Introduce the experimental Interactions API, a toolset that allows you to handle interactions on both layers and basemap features for styles. This API introduces a new concept called `Featureset`, which allows Evolving Basemap styles, such as Standard, to export an abstract set of features, such as POI, buildings, and place labels, regardless of which layers they are rendered on. An `Interaction` can then be targeted to these features, modifying their state when interacted with. For example, you can add a `TapInteraction` to your map which targets the `buildings` `Featureset`. When a user taps on a building, the building will be highlighted and its color will change to blue. 
 
@@ -24,14 +38,6 @@ Specific changes:
   * Introduce low-level methods for creating and manipulating interactive features: `queryRenderedFeatures`, `querySourceFeatures`, `setFeatureState`, `getFeatureState`, `removeFeatureState`, `resetFeatureState`
 * For more guidance with using these new features see `interactive_features_example.dart`.
 * Add support for Swift Package Manager.
-
-### 2.5.2
-
-* Bump Maps SDK to 11.9.2
-
-### 2.5.1
-
-* Bump Maps SDK to 11.9.1
 
 ### 2.5.0
 
